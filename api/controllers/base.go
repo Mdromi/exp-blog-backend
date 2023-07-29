@@ -51,7 +51,7 @@ func (server *Server) Initialize(Dbdriver, DbUser, DbPassword, DbPort, DbHost, D
 	server.DB.Debug().AutoMigrate(
 		&models.User{},
 		&models.Profile{},
-		&models.Links{},
+		&models.SocialLink{},
 		&models.Post{},
 		&models.ResetPassword{},
 		&models.Like{},

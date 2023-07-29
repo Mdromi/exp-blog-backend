@@ -99,18 +99,12 @@ func TestUpdateUserProfile(t *testing.T) {
 		Bio:   profile.Bio + " - 2",
 	}
 
+	updateProfile.Prepare()
 	profileID := uint32(profile.ID)
 
 	updatedProfile, err := updateProfile.UpdateAUserProfile(server.DB, profileID)
 	if err != nil {
 		t.Errorf("this is the error updating the profile: %v\n", err)
-		return
-	}
-
-	// Refresh the profile to get the updated data from the database
-	err = server.DB.Model(&models.Profile{}).Where("id = ?", profileID).Take(&profile).Error
-	if err != nil {
-		t.Errorf("error refreshing profile: %v\n", err)
 		return
 	}
 
@@ -123,17 +117,33 @@ func TestUpdateUserProfile(t *testing.T) {
 
 	fmt.Println("updatedProfile.Name", updatedProfile.Name)
 	assert.Equal(t, updatedProfile.Name, profile.Name+" - 2")
-	// assert.Equal(t, updatedProfile.Title, profile.Title+" - 2")
-	// assert.Equal(t, updatedProfile.Bio, profile.Bio+" - 2")
+	assert.Equal(t, updatedProfile.Title, profile.Title+" - 2")
+	assert.Equal(t, updatedProfile.Bio, profile.Bio+" - 2")
 
 	// Update the user's ProfileID in the user model
-	updatedUser := profile.User
-	updatedUser.ProfileID = uint32(updatedProfile.ID)
-	err = server.DB.Save(&updatedUser).Error
-	if err != nil {
-		t.Errorf("error updating user's ProfileID: %v\n", err)
-		return
-	}
+	// updatedUser := profile.User
+	// updatedUser.ProfileID = uint32(updatedProfile.ID)
+	// err = server.DB.Save(&updatedUser).Error
+	// if err != nil {
+	// 	t.Errorf("error updating user's ProfileID: %v\n", err)
+	// 	return
+	// }
 }
 
-// func TestDeleteUserProfile(t *testing.T)
+func TestDeleteUserProfile(t *testing.T) {
+	err := refreshUserProfileTable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	profile, err := seedOneUserProfile()
+	if err != nil {
+		log.Fatalf("Cannot seed Pofile: %v\n", err)
+	}
+
+	isDeleted, err := profileInstance.DeleteAUserProfile(server.DB, uint32(profile.ID))
+	if err != nil {
+		t.Errorf("this is the error updating the profile: %v\n", err)
+		return
+	}
+	assert.Equal(t, isDeleted, int64(1))
+}

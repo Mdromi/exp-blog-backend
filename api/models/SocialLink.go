@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type Links struct {
+type SocialLink struct {
 	gorm.Model
 	ProfileID uint32 `gorm:"not null" json:"profile_id"`
 	Website   string `gorm:"type:varchar(255)" json:"website"`

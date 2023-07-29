@@ -17,6 +17,7 @@ import (
 var server = controllers.Server{}
 var userInstance = models.User{}
 var profileInstance = models.Profile{}
+var linksInstance = models.SocialLink{}
 var postInstance = models.Post{}
 var likeInstance = models.Like{}
 var commentInstance = models.Comment{}
@@ -99,13 +100,13 @@ func refreshUserProfileTable() error {
 	migrator := server.DB.Migrator()
 
 	// Drop the Profile table if it exists
-	err := migrator.DropTable(&models.User{}, &models.Profile{})
+	err := migrator.DropTable(&models.User{}, &models.Profile{}, &models.SocialLink{})
 	if err != nil {
 		return err
 	}
 
 	// AutoMigrate to create the Profile table
-	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{})
+	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.SocialLink{})
 	if err != nil {
 		return err
 	}
@@ -132,9 +133,10 @@ func seedOneUser() (models.User, error) {
 func seedOneUserProfile() (models.Profile, error) {
 	// Create a user
 	user := models.User{
-		Username: "Pet",
-		Email:    "pet@example.com",
-		Password: "password",
+		Username:   "Pet",
+		Email:      "pet@example.com",
+		Password:   "password",
+		AvatarPath: "image/pic",
 	}
 
 	// Save the user to the database
@@ -150,6 +152,7 @@ func seedOneUserProfile() (models.Profile, error) {
 		Bio:        "Profile Bio for " + user.Username,
 		UserID:     uint32(user.ID),
 		ProfilePic: user.AvatarPath,
+		User:       &user,
 	}
 
 	// Save the profile to the database
@@ -157,6 +160,28 @@ func seedOneUserProfile() (models.Profile, error) {
 	if err != nil {
 		return models.Profile{}, err
 	}
+
+	// // Create social links for the profile
+	// links := models.SocialLink{
+	// 	ProfileID: uint32(profile.ID),
+	// 	Website:   "https://example.com",
+	// 	Facebook:  "https://facebook.com/user",
+	// 	Twitter:   "https://twitter.com/user",
+	// 	Github:    "https://github.com/user",
+	// }
+
+	// // Save the links to the database using the Save method
+	// err = server.DB.Save(&links).Error
+	// if err != nil {
+	// 	return models.Profile{}, err
+	// }
+
+	// // Associate the social links with the profile
+	// profile.SocialLinks = &links
+	// err = server.DB.Save(&profile).Error
+	// if err != nil {
+	// 	return models.Profile{}, err
+	// }
 
 	// Update the user's ProfileID with the ID of the newly created profile
 	user.ProfileID = uint32(profile.ID)

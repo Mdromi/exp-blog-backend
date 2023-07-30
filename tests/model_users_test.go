@@ -27,6 +27,12 @@ func TestFindAllUsers(t *testing.T) {
 		return
 	}
 	assert.Equal(t, len(*users), 2)
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestSaveUser(t *testing.T) {
@@ -50,7 +56,13 @@ func TestSaveUser(t *testing.T) {
 	assert.NotEqual(t, 0, savedUser.ID) // Check that the ID is not zero
 	assert.Equal(t, newUser.Email, savedUser.Email)
 	assert.Equal(t, newUser.Username, savedUser.Username)
-	assert.Equal(t, newUser.ProfileID, uint32(0))
+	assert.Equal(t, newUser.Profile.ID, uint32(0))
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestFindUserByID(t *testing.T) {
@@ -70,6 +82,12 @@ func TestFindUserByID(t *testing.T) {
 	assert.Equal(t, foundUser.ID, user.ID)
 	assert.Equal(t, foundUser.Email, user.Email)
 	assert.Equal(t, foundUser.Username, user.Username)
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestUpdateAuser(t *testing.T) {
@@ -101,6 +119,11 @@ func TestUpdateAuser(t *testing.T) {
 	assert.Equal(t, uint32(updatedUser.ID), userID)
 	assert.Equal(t, updatedUser.Email, userUpdate.Email)
 	assert.Equal(t, updatedUser.Username, userUpdate.Username)
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestDeleteAUser(t *testing.T) {
@@ -119,4 +142,10 @@ func TestDeleteAUser(t *testing.T) {
 		return
 	}
 	assert.Equal(t, isDeleted, int64(1))
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

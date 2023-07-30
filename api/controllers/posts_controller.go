@@ -61,7 +61,7 @@ func (server *Server) CreatePost(c *gin.Context) {
 		return
 	}
 
-	post.AuthorID = pid // the authenticated user is the one creating the post
+	post.AuthorID = uint(pid) // the authenticated user is the one creating the post
 
 	post.Prepare()
 	errorMessages := post.Validate()
@@ -191,7 +191,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 		})
 		return
 	}
-	if profileID != origPost.AuthorID {
+	if profileID != uint32(origPost.AuthorID) {
 		errList["Unauthorized"] = "Unauthorized"
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
@@ -294,7 +294,7 @@ func (server *Server) DeletePost(c *gin.Context) {
 	}
 
 	// Is the authenticated user, the owner of this post?
-	if profileID != post.AuthorID {
+	if profileID != uint32(post.AuthorID) {
 		errList["Unauthorized"] = "Unauthorized"
 		fmt.Println("problem 4")
 		c.JSON(http.StatusUnauthorized, gin.H{

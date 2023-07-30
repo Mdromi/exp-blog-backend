@@ -4,6 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// SocialLink represents social links for a user's profile
 type SocialLink struct {
 	gorm.Model
 	ProfileID uint32 `gorm:"not null" json:"profile_id"`

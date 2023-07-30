@@ -8,20 +8,20 @@ import (
 	"gorm.io/gorm"
 )
 
+// Profile model represents user's profile details
 type Profile struct {
 	gorm.Model
-	UserID        uint32      `gorm:"not null" json:"user_id"`
-	User          *User       `gorm:"foreignKey:UserID" json:"user"`
+	UserID        uint        `gorm:"not null" json:"user_id"`
 	Name          string      `gorm:"type:varchar(50);not null" json:"name" validate:"min=2,max=50"`
 	Title         string      `gorm:"type:varchar(100);not null" json:"title" validate:"max=100"`
 	Bio           string      `gorm:"type:text;not null" json:"bio" validate:"max=500"`
 	ProfilePic    string      `gorm:"type:varchar(255)" json:"profile_pic"`
 	SocialLinks   *SocialLink `json:"social_links"`
-	Posts         []*Post     `gorm:"many2many:profile_posts;" json:"posts"`
-	Bookmarks     []*Post     `gorm:"many2many:profile_bookmarks;" json:"bookmarks"`
+	Posts         []*Post     `gorm:"many2many:post_profiles;" json:"posts"`
+	Bookmarks     []*Post     `gorm:"many2many:post_bookmarks;" json:"bookmarks"`
 	Flowing       []*User     `gorm:"many2many:user_followers;association_foreignkey:FlowingID;" json:"flowing"`
-	LikedPosts    []*Post     `gorm:"many2many:user_liked_posts;" json:"liked_posts"`
-	DislikedPosts []*Post     `gorm:"many2many:user_disliked_posts;" json:"disliked_posts"`
+	LikedPosts    []*Post     `gorm:"many2many:post_likes;" json:"liked_posts"`
+	DislikedPosts []*Post     `gorm:"many2many:post_dislikes;" json:"disliked_posts"`
 }
 
 func (u *Profile) BeforeSave() error {
@@ -46,14 +46,33 @@ func (p *Profile) Prepare() {
 	p.Title = html.EscapeString(strings.TrimSpace(p.Title))
 	p.Bio = html.EscapeString(strings.TrimSpace(p.Bio))
 
-	// Initialize related fields
-	p.User = nil
-	p.SocialLinks = nil
-	p.Posts = make([]*Post, 0)
-	p.Bookmarks = make([]*Post, 0)
-	p.Flowing = make([]*User, 0)
-	p.LikedPosts = make([]*Post, 0)
-	p.DislikedPosts = make([]*Post, 0)
+	// Initialize related fields if nil
+	// if p.UserID ==  {
+	// 	p.User = &User{}
+	// }
+
+	if p.SocialLinks == nil {
+		p.SocialLinks = &SocialLink{}
+	}
+
+	// You can choose to initialize the slices here or use helper functions when adding items.
+	// If you prefer to initialize them here, you can do it like this:
+
+	if p.Posts == nil {
+		p.Posts = []*Post{}
+	}
+
+	if p.Bookmarks == nil {
+		p.Bookmarks = []*Post{}
+	}
+
+	if p.LikedPosts == nil {
+		p.LikedPosts = []*Post{}
+	}
+
+	if p.DislikedPosts == nil {
+		p.DislikedPosts = []*Post{}
+	}
 }
 
 func (p *Profile) AfterFind() (err error) {
@@ -61,11 +80,11 @@ func (p *Profile) AfterFind() (err error) {
 		return err
 	}
 
-	userAvatarPath := p.User.AvatarPath
+	// userAvatarPath := p.User.AvatarPath
 
-	if userAvatarPath != "" {
-		p.ProfilePic = userAvatarPath
-	}
+	// if userAvatarPath != "" {
+	// 	p.ProfilePic = userAvatarPath
+	// }
 
 	return nil
 }
@@ -119,7 +138,7 @@ func (p *Profile) SaveUserProfile(db *gorm.DB) (*Profile, error) {
 		}
 
 		// Check if the user already has a profile
-		if user.ProfileID != 0 {
+		if user.Profile.ID != 0 {
 			// User already has a profile, return an error
 			return &Profile{}, errors.New("user already has a profile")
 		}
@@ -141,7 +160,7 @@ func (p *Profile) SaveUserProfile(db *gorm.DB) (*Profile, error) {
 		}
 
 		// Then, update the User.ProfileID
-		user.ProfileID = uint32(p.ID)
+		user.Profile.ID = p.ID
 		err = db.Debug().Model(&User{}).Where("id = ?", p.UserID).Update("profile_id", p.ID).Error
 		if err != nil {
 			return &Profile{}, err

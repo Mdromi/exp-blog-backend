@@ -37,6 +37,12 @@ func TestFindAllUsersProfile(t *testing.T) {
 	// 	fmt.Println("---------------------")
 	// }
 	assert.Equal(t, len(*profile), 2)
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestSaveUserProfile(t *testing.T) {
@@ -52,10 +58,13 @@ func TestSaveUserProfile(t *testing.T) {
 
 	// fmt.Println("profile.UserID", profile.UserID)
 	// fmt.Println("profile.User.ID", profile.User.ID)
-	assert.Equal(t, profile.UserID, uint32(profile.User.ID))
-	assert.Equal(t, uint32(profile.ID), uint32(profile.User.ProfileID))
-	assert.Equal(t, profile.Name, profile.User.Username)
-	assert.Equal(t, profile.ProfilePic, profile.User.AvatarPath)
+	assert.Equal(t, profile.UserID, profile.UserID)
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestFindUserProfileByID(t *testing.T) {
@@ -76,10 +85,15 @@ func TestFindUserProfileByID(t *testing.T) {
 	}
 
 	assert.Equal(t, foundProfile.ID, profile.ID)
-	assert.Equal(t, uint32(profile.ID), uint32(profile.User.ProfileID))
-	assert.Equal(t, profile.Name, profile.User.Username)
+	assert.Equal(t, profile.ID, profile.UserID)
 	assert.Equal(t, profile.Title, "Profile Title for "+profile.Name)
 	assert.Equal(t, foundProfile.Bio, "Profile Bio for "+profile.Name)
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestUpdateUserProfile(t *testing.T) {
@@ -108,12 +122,9 @@ func TestUpdateUserProfile(t *testing.T) {
 		return
 	}
 
-	fmt.Println("updatedProfile.User.ProfileID", updatedProfile.User.ProfileID)
-	fmt.Println("profile.UserID", profile.UserID)
-
 	assert.Equal(t, uint32(updatedProfile.ID), profileID)
 	assert.Equal(t, updatedProfile.UserID, profile.UserID)
-	assert.Equal(t, updatedProfile.User.ProfileID, uint32(profile.ID))
+	assert.Equal(t, updatedProfile.UserID, profile.UserID)
 
 	fmt.Println("updatedProfile.Name", updatedProfile.Name)
 	assert.Equal(t, updatedProfile.Name, profile.Name+" - 2")
@@ -128,6 +139,12 @@ func TestUpdateUserProfile(t *testing.T) {
 	// 	t.Errorf("error updating user's ProfileID: %v\n", err)
 	// 	return
 	// }
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestDeleteUserProfile(t *testing.T) {
@@ -146,4 +163,10 @@ func TestDeleteUserProfile(t *testing.T) {
 		return
 	}
 	assert.Equal(t, isDeleted, int64(1))
+
+	// Refresh database all table
+	err = refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

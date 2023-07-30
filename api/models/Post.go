@@ -8,19 +8,20 @@ import (
 	"gorm.io/gorm"
 )
 
+// Post model represents a post
 type Post struct {
 	gorm.Model
-	Title          string    `gorm:"size:255;not null" json:"title"`
-	PostPermalinks string    `gorm:"size:255" json:"post_permalinks"`
-	Content        string    `gorm:"type:text;not null" json:"body"`
-	AuthorID       uint32    `gorm:"not null" json:"author_id"`
-	Author         Profile   `gorm:"foreignKey:AuthorID" json:"author"`
-	Tags           []string  `gorm:"type:text[]" json:"tags"`
-	Thumbnails     string    `gorm:"size:255" json:"thumbnails"`
-	ReadTime       string    `json:"read_time"`
-	Likes          []Like    `gorm:"many2many:post_likes;" json:"likes"`
-	DisLikes       []Disike  `gorm:"many2many:post_dislikes;" json:"dislikes"`
-	Comment        []Comment `json:"comment"`
+	Title          string     `gorm:"size:255;not null" json:"title"`
+	PostPermalinks string     `gorm:"size:255" json:"post_permalinks"`
+	Content        string     `gorm:"type:text;not null" json:"body"`
+	AuthorID       uint       `gorm:"not null" json:"author_id"`
+	Author         *Profile   `gorm:"foreignKey:AuthorID" json:"author"`
+	Tags           []string   `gorm:"type:text[]" json:"tags"`
+	Thumbnails     string     `gorm:"size:255" json:"thumbnails"`
+	ReadTime       string     `json:"read_time"`
+	Likes          []*Like    `gorm:"many2many:post_likes;" json:"likes"`
+	Dislikes       []*Dislike `gorm:"many2many:post_dislikes;" json:"dislikes"`
+	Comments       []*Comment `json:"comments"`
 }
 
 func (p *Post) Prepare() {
@@ -30,13 +31,33 @@ func (p *Post) Prepare() {
 	p.Content = html.EscapeString(strings.TrimSpace(p.Content))
 
 	// Initialize related fields
-	p.Author = Profile{}
-	p.Tags = make([]string, 0)
-	p.Thumbnails = ""
-	p.ReadTime = ""
-	p.Likes = make([]Like, 0)
-	p.DisLikes = make([]Disike, 0)
-	p.Comment = make([]Comment, 0)
+	if p.Author == nil {
+		p.Author = &Profile{} // Initialize Author field as an empty Profile struct
+	}
+
+	if p.Tags == nil {
+		p.Tags = make([]string, 0) // Initialize Tags field as an empty string slice
+	}
+
+	if p.Thumbnails == "" {
+		p.Thumbnails = "" // Initialize Thumbnails field as an empty string
+	}
+
+	if p.ReadTime == "" {
+		p.ReadTime = "" // Initialize ReadTime field as an empty string
+	}
+
+	if p.Likes == nil {
+		p.Likes = make([]*Like, 0) // Initialize Likes field as an empty Like slice
+	}
+
+	if p.Dislikes == nil {
+		p.Dislikes = make([]*Dislike, 0) // Initialize Dislikes field as an empty Dislike slice
+	}
+
+	if p.Comments == nil {
+		p.Comments = make([]*Comment, 0) // Initialize Comments field as an empty Comment slice
+	}
 }
 
 func (p *Post) Validate() map[string]string {

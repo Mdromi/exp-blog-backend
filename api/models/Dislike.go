@@ -28,12 +28,6 @@ func (l *Like) SaveDislike(db *gorm.DB) (*Like, error) {
 		if err != nil {
 			return &Like{}, err
 		}
-
-		// Update the post's Likes field to remove the like
-		err = RemoveFromPostLikes(db, l.PostID, l.ProfileID)
-		if err != nil {
-			return &Like{}, err
-		}
 	}
 
 	// Check if the user has disliked this post before
@@ -49,11 +43,6 @@ func (l *Like) SaveDislike(db *gorm.DB) (*Like, error) {
 			return &Like{}, err
 		}
 
-		// Update the post's DisLikes field with the newly disliked post
-		// err = AddToPostDislikes(db, l.PostID, l.ProfileID)
-		if err != nil {
-			return &Like{}, err
-		}
 	} else {
 		// The user has disliked it before, so return a custom error message
 		return &Like{}, errors.New("double dislike")
@@ -76,17 +65,11 @@ func (d *Dislike) DeleteDislike(db *gorm.DB) (*Dislike, error) {
 			return &Dislike{}, err
 		}
 
-		// Update the post's Dislikes field to remove the dislike
-		err = RemoveFromPostDislikes(db, d.PostID, d.ProfileID)
-		if err != nil {
-			return &Dislike{}, err
-		}
-
 		// Update the profile's DislikedPosts field to remove the post
-		err = RemoveFromDislikedPosts(db, d.PostID, d.ProfileID)
-		if err != nil {
-			return &Dislike{}, err
-		}
+		// err = RemoveFromDislikedPosts(db, d.PostID, d.ProfileID)
+		// if err != nil {
+		// 	return &Dislike{}, err
+		// }
 	} else {
 		// The user has not disliked this post before, so return a custom error message
 		return &Dislike{}, errors.New("dislike not found")
@@ -122,13 +105,6 @@ func (d *Dislike) DeleteUserDislikes(db *gorm.DB, profileID uint) (int64, error)
 	for _, dislike := range dislikes {
 		postIDs = append(postIDs, dislike.PostID)
 		if err := db.Delete(dislike).Error; err != nil {
-			return 0, err
-		}
-	}
-
-	// Update the Dislikes field of respective posts to remove the deleted dislikes.
-	for _, postID := range postIDs {
-		if err := RemoveFromPostDislikes(db, postID, profileID); err != nil {
 			return 0, err
 		}
 	}
@@ -182,11 +158,11 @@ func (d *Dislike) DeletePostDislikes(db *gorm.DB, pid uint64) (int64, error) {
 	}
 
 	// Update the DislikedPosts field of respective users to remove the post with deleted dislikes.
-	for _, userID := range userIDs {
-		if err := RemoveFromDislikedPosts(db, uint(pid), userID); err != nil {
-			return 0, err
-		}
-	}
+	// for _, userID := range userIDs {
+	// 	if err := RemoveFromDislikedPosts(db, uint(pid), userID); err != nil {
+	// 		return 0, err
+	// 	}
+	// }
 
 	// Delete the Dislike model entries for the given post.
 	if err := db.Where("post_id = ?", pid).Delete(&Dislike{}).Error; err != nil {

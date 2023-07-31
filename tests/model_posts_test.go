@@ -50,6 +50,7 @@ func TestSavePost(t *testing.T) {
 		Title:    "This is the title",
 		Content:  "This is the content",
 		AuthorID: profile.ID,
+		Author:   profile,
 	}
 
 	savedPost, err := newPost.SavePost(server.DB)

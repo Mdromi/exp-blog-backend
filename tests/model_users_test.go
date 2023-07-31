@@ -56,7 +56,7 @@ func TestSaveUser(t *testing.T) {
 	assert.NotEqual(t, 0, savedUser.ID) // Check that the ID is not zero
 	assert.Equal(t, newUser.Email, savedUser.Email)
 	assert.Equal(t, newUser.Username, savedUser.Username)
-	assert.Equal(t, newUser.Profile.ID, uint32(0))
+	assert.Equal(t, newUser.ProfileID, uint32(0))
 
 	// Refresh database all table
 	err = refreshAllTable()

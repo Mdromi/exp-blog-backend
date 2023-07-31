@@ -11,34 +11,17 @@ import (
 // Profile model represents user's profile details
 type Profile struct {
 	gorm.Model
-	UserID        uint        `gorm:"not null" json:"user_id"`
-	Name          string      `gorm:"type:varchar(50);not null" json:"name" validate:"min=2,max=50"`
-	Title         string      `gorm:"type:varchar(100);not null" json:"title" validate:"max=100"`
-	Bio           string      `gorm:"type:text;not null" json:"bio" validate:"max=500"`
-	ProfilePic    string      `gorm:"type:varchar(255)" json:"profile_pic"`
-	SocialLinks   *SocialLink `json:"social_links"`
-	Posts         []*Post     `gorm:"many2many:post_profiles;" json:"posts"`
-	Bookmarks     []*Post     `gorm:"many2many:post_bookmarks;" json:"bookmarks"`
-	Flowing       []*User     `gorm:"many2many:user_followers;association_foreignkey:FlowingID;" json:"flowing"`
-	LikedPosts    []*Post     `gorm:"many2many:post_likes;" json:"liked_posts"`
-	DislikedPosts []*Post     `gorm:"many2many:post_dislikes;" json:"disliked_posts"`
+	UserID      uint        `gorm:"not null" json:"user_id"`
+	Name        string      `gorm:"type:varchar(50);not null" json:"name" validate:"min=2,max=50"`
+	Title       string      `gorm:"type:varchar(100);not null" json:"title" validate:"max=100"`
+	Bio         string      `gorm:"type:text;not null" json:"bio" validate:"max=500"`
+	ProfilePic  string      `gorm:"type:varchar(255)" json:"profile_pic"`
+	SocialLinks *SocialLink `json:"social_links"`
 }
 
 func (u *Profile) BeforeSave() error {
 	return nil
 }
-
-// func (p *Profile) Prepare() {
-// 	p.Name = html.EscapeString(strings.TrimSpace(p.Name))
-// 	p.Title = html.EscapeString(strings.TrimSpace(p.Title))
-// 	p.Bio = html.EscapeString(strings.TrimSpace(p.Bio))
-// 	p.User = &User{}
-// 	p.SocialLinks = &SocialLink{}
-// 	p.Posts = []*Post{}
-// 	p.Bookmarks = []*Post{}
-// 	p.LikedPosts = []*Post{}
-// 	p.DislikedPosts = []*Post{}
-// }
 
 func (p *Profile) Prepare() {
 	// Sanitize and trim strings
@@ -46,32 +29,8 @@ func (p *Profile) Prepare() {
 	p.Title = html.EscapeString(strings.TrimSpace(p.Title))
 	p.Bio = html.EscapeString(strings.TrimSpace(p.Bio))
 
-	// Initialize related fields if nil
-	// if p.UserID ==  {
-	// 	p.User = &User{}
-	// }
-
 	if p.SocialLinks == nil {
 		p.SocialLinks = &SocialLink{}
-	}
-
-	// You can choose to initialize the slices here or use helper functions when adding items.
-	// If you prefer to initialize them here, you can do it like this:
-
-	if p.Posts == nil {
-		p.Posts = []*Post{}
-	}
-
-	if p.Bookmarks == nil {
-		p.Bookmarks = []*Post{}
-	}
-
-	if p.LikedPosts == nil {
-		p.LikedPosts = []*Post{}
-	}
-
-	if p.DislikedPosts == nil {
-		p.DislikedPosts = []*Post{}
 	}
 }
 
@@ -124,46 +83,26 @@ func (p *Profile) Validate(action string) map[string]string {
 
 	return errorMessages
 }
-
 func (p *Profile) SaveUserProfile(db *gorm.DB) (*Profile, error) {
 	var err error
 
-	// Check if the user already has a profile
-	if p.UserID != 0 {
-		// Retrieve the user from the database
-		var user User
-		err = db.Debug().Model(&User{}).Where("id = ?", p.UserID).Take(&user).Error
-		if err != nil {
-			return &Profile{}, err
-		}
-
-		// Check if the user already has a profile
-		if user.Profile.ID != 0 {
-			// User already has a profile, return an error
-			return &Profile{}, errors.New("user already has a profile")
-		}
+	// Check if the profile already exists
+	if p.ID != 0 {
+		return nil, errors.New("user already has a profile")
 	}
 
 	// Create the profile
 	err = db.Debug().Model(&Profile{}).Create(&p).Error
 	if err != nil {
-		return &Profile{}, err
+		return nil, err
 	}
 
 	// Update the User.ProfileID
-	if p.ID != 0 {
-		// First, retrieve the user from the database
-		var user User
-		err = db.Debug().Model(&User{}).Where("id = ?", p.UserID).Take(&user).Error
-		if err != nil {
-			return &Profile{}, err
-		}
-
-		// Then, update the User.ProfileID
-		user.Profile.ID = p.ID
+	if p.UserID != 0 {
+		// Update the User.ProfileID with the newly created profile's ID
 		err = db.Debug().Model(&User{}).Where("id = ?", p.UserID).Update("profile_id", p.ID).Error
 		if err != nil {
-			return &Profile{}, err
+			return nil, err
 		}
 	}
 
@@ -174,8 +113,7 @@ func (p *Profile) SaveUserProfile(db *gorm.DB) (*Profile, error) {
 func (p *Profile) FindAllUsersProfile(db *gorm.DB) (*[]Profile, error) {
 	var err error
 	profiles := []Profile{}
-	// err = db.Debug().Model(&Profile{}).Limit(100).Find(&profiles).Error
-	err = db.Debug().Preload("User").Limit(100).Find(&profiles).Error
+	err = db.Debug().Model(&Profile{}).Limit(100).Find(&profiles).Error
 	if err != nil {
 		return &[]Profile{}, err
 	}
@@ -196,7 +134,7 @@ func (p *Profile) FindUserProfileByID(db *gorm.DB, pid uint32) (*Profile, error)
 }
 
 func (p *Profile) UpdateAUserProfile(db *gorm.DB, pid uint32) (*Profile, error) {
-	db = db.Debug().Preload("User").Model(&Profile{}).Where("id = ?", pid).Take(&Profile{}).UpdateColumns(
+	db = db.Debug().Model(&Profile{}).Where("id = ?", pid).Take(&Profile{}).UpdateColumns(
 		map[string]interface{}{
 			"name":  p.Name,
 			"title": p.Title,
@@ -208,8 +146,8 @@ func (p *Profile) UpdateAUserProfile(db *gorm.DB, pid uint32) (*Profile, error) 
 		return &Profile{}, db.Error
 	}
 
-	// This is the display the updated user
-	err := db.Debug().Model(&Profile{}).Where("id = ?", pid).Take(p).Error
+	// This is the display the updated profile
+	err := db.Debug().Model(&Profile{}).Where("id = ?", pid).Take(&p).Error
 	if err != nil {
 		return &Profile{}, err
 	}
@@ -228,7 +166,7 @@ func (p *Profile) UpdateAUserProfilePic(db *gorm.DB, pid uint32) (*Profile, erro
 		return nil, db.Error
 	}
 
-	// Retrieve and return the updated user
+	// Retrieve and return the updated profile
 	err := db.Debug().Model(&Profile{}).Where("id = ?", pid).Take(&p).Error
 	if err != nil {
 		return nil, err

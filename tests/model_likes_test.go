@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testSaveALike(t *testing.T) {
+func TestSaveALike(t *testing.T) {
 	err := refreshUserProfilePostAndLikeTable()
 	if err != nil {
 		log.Fatalf("Error refreshing user, profile, post and like table %v\n", err)

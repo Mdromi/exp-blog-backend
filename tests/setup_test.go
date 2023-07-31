@@ -78,39 +78,6 @@ func Database() {
 	}
 }
 
-func AutoMigrateTables(db *gorm.DB) error {
-	err := db.AutoMigrate(&models.Post{}, &models.Like{}, &models.Dislike{})
-	if err != nil {
-		return err
-	}
-
-	// Add foreign key constraint to post_likes table
-	err = db.Exec(`
-		ALTER TABLE post_likes
-		ADD CONSTRAINT fk_post_likes_post
-		FOREIGN KEY (post_id) REFERENCES posts(id)
-		ON DELETE RESTRICT
-		ON UPDATE RESTRICT;
-	`).Error
-	if err != nil {
-		return err
-	}
-
-	// Add foreign key constraint to post_dislikes table
-	err = db.Exec(`
-		ALTER TABLE post_dislikes
-		ADD CONSTRAINT fk_post_dislikes_post
-		FOREIGN KEY (post_id) REFERENCES posts(id)
-		ON DELETE RESTRICT
-		ON UPDATE RESTRICT;
-	`).Error
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func refreshAllTable() error {
 	migrator := server.DB.Migrator()
 
@@ -129,27 +96,6 @@ func refreshAllTable() error {
 	log.Printf("Successfully refreshed All table")
 	return nil
 }
-
-// func AutoMigrateTables(db *gorm.DB) error {
-// 	err := db.AutoMigrate(&Post{}, &Like{}, &Dislike{})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Add foreign key constraint to post_likes table
-// 	err = db.Migrator().CreateConstraint(&Like{}, "PostID", "posts(id)", "RESTRICT", "RESTRICT")
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Add foreign key constraint to post_dislikes table
-// 	err = db.Migrator().CreateConstraint(&Dislike{}, "PostID", "posts(id)", "RESTRICT", "RESTRICT")
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
 
 func refreshUserTable() error {
 	migrator := server.DB.Migrator()
@@ -257,16 +203,10 @@ func seedOneUserProfile() (models.Profile, error) {
 	// }
 
 	// Update the user's ProfileID with the ID of the newly created profile
-	user.Profile = profile
+	user.ProfileID = uint32(profile.ID)
 
 	// Save the updated user to the database
 	err = server.DB.Save(&user).Error
-	if err != nil {
-		return models.Profile{}, err
-	}
-
-	// Associate the profile with the user (update the User field in the Profile model)
-	err = server.DB.Model(&profile).Association("User").Append(&user)
 	if err != nil {
 		return models.Profile{}, err
 	}
@@ -310,8 +250,7 @@ func seedUsersProfiles() ([]*models.Profile, error) {
 
 	profiles := make([]*models.Profile, len(users))
 	for i, user := range users {
-		fmt.Println("user", user)
-		profile := &models.Profile{ // Change the type to pointer to models.Profile
+		profile := &models.Profile{
 			Name:       user.Username,
 			Title:      "Profile Title for " + user.Username,
 			Bio:        "Profile Bio for " + user.Username,
@@ -325,6 +264,13 @@ func seedUsersProfiles() ([]*models.Profile, error) {
 		}
 
 		profiles[i] = profile
+
+		// Update the User model's Profile field with the created profile
+		err = server.DB.Debug().Model(&models.User{}).Where("id = ?", user.ID).Take(&user.ProfileID).Error
+		err = server.DB.Save(&user).Error
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return profiles, nil

@@ -11,17 +11,14 @@ import (
 // Post model represents a post
 type Post struct {
 	gorm.Model
-	Title          string     `gorm:"size:255;not null" json:"title"`
-	PostPermalinks string     `gorm:"size:255" json:"post_permalinks"`
-	Content        string     `gorm:"type:text;not null" json:"body"`
-	AuthorID       uint       `gorm:"not null" json:"author_id"`
-	Author         *Profile   `gorm:"foreignKey:AuthorID" json:"author"`
-	Tags           []string   `gorm:"type:text[]" json:"tags"`
-	Thumbnails     string     `gorm:"size:255" json:"thumbnails"`
-	ReadTime       string     `json:"read_time"`
-	Likes          []*Like    `gorm:"many2many:post_likes;" json:"likes"`
-	Dislikes       []*Dislike `gorm:"many2many:post_dislikes;" json:"dislikes"`
-	Comments       []*Comment `json:"comments"`
+	Title          string   `gorm:"size:255;not null" json:"title"`
+	PostPermalinks string   `gorm:"size:255" json:"post_permalinks"`
+	Content        string   `gorm:"type:text;not null" json:"body"`
+	AuthorID       uint     `gorm:"not null" json:"author_id"`
+	Author         Profile  `gorm:"foreignKey:AuthorID" json:"author"`
+	Tags           []string `gorm:"type:text[]" json:"tags"`
+	Thumbnails     string   `gorm:"size:255" json:"thumbnails"`
+	ReadTime       string   `json:"read_time"`
 }
 
 func (p *Post) Prepare() {
@@ -31,9 +28,9 @@ func (p *Post) Prepare() {
 	p.Content = html.EscapeString(strings.TrimSpace(p.Content))
 
 	// Initialize related fields
-	if p.Author == nil {
-		p.Author = &Profile{} // Initialize Author field as an empty Profile struct
-	}
+	// if p.Author == nil {
+	// 	p.Author = &Profile{} // Initialize Author field as an empty Profile struct
+	// }
 
 	if p.Tags == nil {
 		p.Tags = make([]string, 0) // Initialize Tags field as an empty string slice
@@ -47,17 +44,9 @@ func (p *Post) Prepare() {
 		p.ReadTime = "" // Initialize ReadTime field as an empty string
 	}
 
-	if p.Likes == nil {
-		p.Likes = make([]*Like, 0) // Initialize Likes field as an empty Like slice
-	}
-
-	if p.Dislikes == nil {
-		p.Dislikes = make([]*Dislike, 0) // Initialize Dislikes field as an empty Dislike slice
-	}
-
-	if p.Comments == nil {
-		p.Comments = make([]*Comment, 0) // Initialize Comments field as an empty Comment slice
-	}
+	// if p.Comments == nil {
+	// 	p.Comments = make([]*Comment, 0) // Initialize Comments field as an empty Comment slice
+	// }
 }
 
 func (p *Post) Validate() map[string]string {
@@ -83,38 +72,26 @@ func (p *Post) Validate() map[string]string {
 
 func (p *Post) SavePost(db *gorm.DB) (*Post, error) {
 	var err error
-	err = db.Debug().Model(&Post{}).Create(&p).Error
+	err = db.Debug().Model(&Post{}).Create(&p).Preload("Author").Error
 	if err != nil {
 		return &Post{}, err
 	}
 
-	if p.ID != 0 {
-		err = db.Debug().Model(&Profile{}).Where("id = ?", p.AuthorID).Take(&p.Author).Error
-		if err != nil {
-			return &Post{}, err
-		}
-	}
 	return p, nil
 }
 
 func (p *Post) FindAllPosts(db *gorm.DB) (*[]Post, error) {
 	var err error
 	posts := []Post{}
-	err = db.Debug().Model(&Post{}).Limit(100).Order("created_at desc").Find(&posts).Error
+
+	err = db.Debug().Model(&Post{}).Limit(100).Order("created_at desc").Preload("Author").Find(&posts).Error
 	if err != nil {
 		return &[]Post{}, err
 	}
 
-	if len(posts) > 0 {
-		for _, post := range posts {
-			err := db.Debug().Model(&Profile{}).Where("id = ?", post.AuthorID).Take(&post.Author).Error
-			if err != nil {
-				return &[]Post{}, err
-			}
-		}
-	}
 	return &posts, nil
 }
+
 func (p *Post) FindPostById(db *gorm.DB, pid uint64) (*Post, error) {
 	var err error
 	err = db.Debug().Model(&Post{}).Where("id = ?", pid).Take(&p).Error

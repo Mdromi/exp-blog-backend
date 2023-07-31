@@ -28,7 +28,8 @@ type User struct {
 	Email      string `gorm:"size:100;not null;unique" json:"email"`
 	Password   string `gorm:"size:100;not null;" json:"password"`
 	AvatarPath string `gorm:"size:255" json:"avatar_path"`
-	Profile    Profile
+	// Profile    Profile `json:"profile"`
+	ProfileID uint32 `gorm:"not null" json:"profile_id"`
 }
 
 func (u *User) BeforeSave() error {

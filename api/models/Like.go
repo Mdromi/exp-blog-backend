@@ -28,17 +28,10 @@ func (l *Like) SaveLike(db *gorm.DB) (*Like, error) {
 		}
 
 		// Update the profile's DislikedPosts field to remove the post
-		err = RemoveFromDislikedPosts(db, l.PostID, l.ProfileID)
-		if err != nil {
-			return &Like{}, err
-		}
-	}
-
-	// Update the post's Likes field
-
-	// err = UpdatePostLikeDislike(db, l.PostID, l.ProfileID, true)
-	if err != nil {
-		return &Like{}, err
+		// err = RemoveFromDislikedPosts(db, l.PostID, l.ProfileID)
+		// if err != nil {
+		// 	return &Like{}, err
+		// }
 	}
 
 	// Check if the user has liked this post before
@@ -54,11 +47,6 @@ func (l *Like) SaveLike(db *gorm.DB) (*Like, error) {
 			return &Like{}, err
 		}
 
-		// Update the profile's LikedPosts field with the newly liked post
-		// err = AddToLikedPosts(db, l.PostID, l.ProfileID)
-		if err != nil {
-			return &Like{}, err
-		}
 	} else {
 		// The user has liked it before, so return a custom error message
 		return &Like{}, errors.New("double like")
@@ -81,17 +69,11 @@ func (l *Like) DeleteLike(db *gorm.DB) (*Like, error) {
 			return &Like{}, err
 		}
 
-		// Update the post's Likes field to remove the like
-		err = RemoveFromPostLikes(db, l.PostID, l.ProfileID)
-		if err != nil {
-			return &Like{}, err
-		}
-
 		// Update the profile's LikedPosts field to remove the post
-		err = RemoveFromLikedPosts(db, l.PostID, l.ProfileID)
-		if err != nil {
-			return &Like{}, err
-		}
+		// err = RemoveFromLikedPosts(db, l.PostID, l.ProfileID)
+		// if err != nil {
+		// 	return &Like{}, err
+		// }
 	} else {
 		// The user has not liked this post before, so return a custom error message
 		return &Like{}, errors.New("like not found")
@@ -128,13 +110,6 @@ func (l *Like) DeleteUserLikes(db *gorm.DB, profileID uint32) (int64, error) {
 	for _, like := range likes {
 		postIDs = append(postIDs, like.PostID)
 		if err := db.Delete(like).Error; err != nil {
-			return 0, err
-		}
-	}
-
-	// Update the Likes field of respective posts to remove the deleted likes.
-	for _, postID := range postIDs {
-		if err := RemoveFromPostLikes(db, postID, uint(profileID)); err != nil {
 			return 0, err
 		}
 	}
@@ -183,13 +158,6 @@ func (l *Like) DeletePostLikes(db *gorm.DB, pid uint64) (int64, error) {
 	for _, like := range likes {
 		userIDs = append(userIDs, like.ProfileID)
 		if err := db.Delete(like).Error; err != nil {
-			return 0, err
-		}
-	}
-
-	// Update the LikedPosts field of respective users to remove the post with deleted likes.
-	for _, userID := range userIDs {
-		if err := RemoveFromLikedPosts(db, uint(pid), userID); err != nil {
 			return 0, err
 		}
 	}

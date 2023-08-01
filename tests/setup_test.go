@@ -19,7 +19,7 @@ var userInstance = models.User{}
 var profileInstance = models.Profile{}
 var linksInstance = models.SocialLink{}
 var postInstance = models.Post{}
-var likeInstance = models.Like{}
+var likeInstance = models.LikeDislike{}
 var commentInstance = models.Comment{}
 
 func TestMain(m *testing.M) {
@@ -82,13 +82,13 @@ func refreshAllTable() error {
 	migrator := server.DB.Migrator()
 
 	// Drop the Profile table if it exists
-	err := migrator.DropTable(&models.User{}, &models.Profile{}, &models.SocialLink{}, &models.ResetPassword{}, &models.Post{}, &models.Like{}, &models.Dislike{}, &models.Comment{}, models.Replyes{})
+	err := migrator.DropTable(&models.User{}, &models.Profile{}, &models.SocialLink{}, &models.ResetPassword{}, &models.Post{}, &models.LikeDislike{}, &models.Comment{}, models.Replyes{})
 	if err != nil {
 		return err
 	}
 
 	// AutoMigrate to create the Profile table
-	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.SocialLink{}, &models.ResetPassword{}, &models.Post{}, &models.Like{}, &models.Dislike{}, &models.Comment{}, models.Replyes{})
+	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.SocialLink{}, &models.ResetPassword{}, &models.Post{}, &models.LikeDislike{}, &models.Comment{}, models.Replyes{})
 	if err != nil {
 		return err
 	}
@@ -368,20 +368,16 @@ func seedUsersProfileAndPosts() ([]*models.Profile, []models.Post, error) {
 func refreshUserProfilePostAndLikeTable() error {
 	migrator := server.DB.Migrator()
 
-	// Delete records from the post_likes table first
-	err := server.DB.Where("1 = 1").Delete(&models.Like{}).Error
-	if err != nil {
-		return err
-	}
+	var err error
 
 	// Drop the User, Profile, Post, and Like tables if they exist
-	err = migrator.DropTable(&models.User{}, &models.Profile{}, &models.Post{}, &models.Like{})
+	err = migrator.DropTable(&models.User{}, &models.Profile{}, &models.Post{}, &models.LikeDislike{})
 	if err != nil {
 		return err
 	}
 
 	// AutoMigrate to create the User, Profile, Post, and Like tables
-	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.Post{}, &models.Like{})
+	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.Post{}, &models.LikeDislike{})
 	if err != nil {
 		return err
 	}
@@ -390,7 +386,7 @@ func refreshUserProfilePostAndLikeTable() error {
 	return nil
 }
 
-func seedUsersPostsAndLikes() (*models.Post, []*models.Profile, []*models.Like, error) {
+func seedUsersProfilePostsAndLikes() (*models.Post, []*models.Profile, []*models.LikeDislike, error) {
 	// The idea here is: two users can like one post
 	var err error
 
@@ -411,18 +407,20 @@ func seedUsersPostsAndLikes() (*models.Post, []*models.Profile, []*models.Like, 
 		log.Fatalf("cannot seed post table: %v", err)
 	}
 
-	likes := []*models.Like{
-		&models.Like{
+	likes := []*models.LikeDislike{
+		&models.LikeDislike{
 			ProfileID: profiles[0].ID,
 			PostID:    post.ID,
+			Action:    "like",
 		},
-		&models.Like{
+		&models.LikeDislike{
 			ProfileID: profiles[1].ID,
 			PostID:    post.ID,
+			Action:    "dislike",
 		},
 	}
 	for i := range profiles {
-		err = server.DB.Model(&models.Like{}).Create(likes[i]).Error
+		err = server.DB.Model(&models.LikeDislike{}).Create(likes[i]).Error
 		if err != nil {
 			log.Fatalf("cannot seed likes table: %v", err)
 		}
@@ -430,7 +428,7 @@ func seedUsersPostsAndLikes() (*models.Post, []*models.Profile, []*models.Like, 
 	return &post, profiles, likes, nil
 }
 
-func seedUsersPostsAndDislikes() (*models.Post, []*models.Profile, []*models.Dislike, error) {
+func seedUsersPostsAndDislikes() (*models.Post, []*models.Profile, []*models.LikeDislike, error) {
 	// The idea here is: two users can dislike one post
 	var err error
 
@@ -451,18 +449,18 @@ func seedUsersPostsAndDislikes() (*models.Post, []*models.Profile, []*models.Dis
 		log.Fatalf("cannot seed post table: %v", err)
 	}
 
-	dislikes := []*models.Dislike{
-		&models.Dislike{
+	dislikes := []*models.LikeDislike{
+		&models.LikeDislike{
 			ProfileID: profiles[0].ID,
 			PostID:    post.ID,
 		},
-		&models.Dislike{
+		&models.LikeDislike{
 			ProfileID: profiles[1].ID,
 			PostID:    post.ID,
 		},
 	}
 	for i := range profiles {
-		err = server.DB.Model(&models.Dislike{}).Create(dislikes[i]).Error
+		err = server.DB.Model(&models.LikeDislike{}).Create(dislikes[i]).Error
 		if err != nil {
 			log.Fatalf("cannot seed dislikes table: %v", err)
 		}
@@ -529,7 +527,7 @@ func seedUsersPostsAndComments() (models.Post, []models.User, []models.Comment, 
 		if err != nil {
 			log.Fatalf("cannot seed users table: %v", err)
 		}
-		err = server.DB.Model(&models.Like{}).Create(&comments[i]).Error
+		err = server.DB.Model(&models.LikeDislike{}).Create(&comments[i]).Error
 		if err != nil {
 			log.Fatalf("cannot seed comments table: %v", err)
 		}

@@ -54,8 +54,7 @@ func (server *Server) Initialize(Dbdriver, DbUser, DbPassword, DbPort, DbHost, D
 		&models.SocialLink{},
 		&models.Post{},
 		&models.ResetPassword{},
-		&models.Like{},
-		&models.Dislike{},
+		&models.LikeDislike{},
 		&models.Comment{},
 		&models.Replyes{},
 	)

@@ -428,14 +428,33 @@ func seedUsersProfilePostsAndLikes() (*models.Post, []*models.Profile, []*models
 	return &post, profiles, likes, nil
 }
 
-func seedUsersPostsAndDislikes() (*models.Post, []*models.Profile, []*models.LikeDislike, error) {
-	// The idea here is: two users can dislike one post
+func refreshUserProfilePostAndCommentTable() error {
+	migrator := server.DB.Migrator()
+
+	// Drop the User, Post, and Comment tables if they exist
+	err := migrator.DropTable(&models.User{}, &models.Profile{}, &models.Post{}, &models.Comment{})
+	if err != nil {
+		return err
+	}
+
+	// AutoMigrate to create the User, Post, and Comment tables
+	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.Post{}, &models.Comment{})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Successfully refreshed user, post, and comment tables")
+	return nil
+}
+
+func seedUsersProfilePostsAndComments() (models.Post, []*models.Profile, []models.Comment, error) {
+	// The idea here is: two users can like one post
 	var err error
 
 	profiles, err := seedUsersProfiles()
 
 	if err != nil {
-		return nil, nil, nil, err
+		log.Fatalf("cannot seed users profile table: %v", err)
 	}
 
 	post := models.Post{
@@ -449,90 +468,25 @@ func seedUsersPostsAndDislikes() (*models.Post, []*models.Profile, []*models.Lik
 		log.Fatalf("cannot seed post table: %v", err)
 	}
 
-	dislikes := []*models.LikeDislike{
-		&models.LikeDislike{
-			ProfileID: profiles[0].ID,
-			PostID:    post.ID,
-		},
-		&models.LikeDislike{
-			ProfileID: profiles[1].ID,
-			PostID:    post.ID,
-		},
-	}
-	for i := range profiles {
-		err = server.DB.Model(&models.LikeDislike{}).Create(dislikes[i]).Error
-		if err != nil {
-			log.Fatalf("cannot seed dislikes table: %v", err)
-		}
-	}
-	return &post, profiles, dislikes, nil
-}
-
-func refreshUserPostAndCommentTable() error {
-	migrator := server.DB.Migrator()
-
-	// Drop the User, Post, and Comment tables if they exist
-	err := migrator.DropTable(&models.User{}, &models.Post{}, &models.Comment{})
-	if err != nil {
-		return err
-	}
-
-	// AutoMigrate to create the User, Post, and Comment tables
-	err = server.DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{})
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Successfully refreshed user, post, and comment tables")
-	return nil
-}
-
-func seedUsersPostsAndComments() (models.Post, []models.User, []models.Comment, error) {
-	// The idea here is: two users can comment one post
-	var err error
-	var users = []models.User{
-		models.User{
-			Username: "Steven",
-			Email:    "steven@example.com",
-			Password: "password",
-		},
-		models.User{
-			Username: "Magu",
-			Email:    "magu@example.com",
-			Password: "password",
-		},
-	}
-	post := models.Post{
-		Title:   "This is the title",
-		Content: "This is the content",
-	}
-	err = server.DB.Model(&models.Post{}).Create(&post).Error
-	if err != nil {
-		log.Fatalf("cannot seed post table: %v", err)
-	}
 	var comments = []models.Comment{
 		models.Comment{
-			Body:   "user 1 made this comment",
-			UserID: 1,
-			PostID: uint64(post.ID),
+			Body:      "user 1 made this comment",
+			ProfileID: uint32(profiles[0].ID),
+			PostID:    uint64(post.ID),
 		},
 		models.Comment{
-			Body:   "user 2 made this comment",
-			UserID: 2,
-			PostID: uint64(post.ID),
+			Body:      "user 2 made this comment",
+			ProfileID: uint32(profiles[1].ID),
+			PostID:    uint64(post.ID),
 		},
 	}
-	for i, _ := range users {
-		err = server.DB.Model(&models.User{}).Create(&users[i]).Error
-		if err != nil {
-			log.Fatalf("cannot seed users table: %v", err)
-		}
-		err = server.DB.Model(&models.LikeDislike{}).Create(&comments[i]).Error
+	for i, _ := range profiles {
+		err = server.DB.Model(&models.Comment{}).Create(&comments[i]).Error
 		if err != nil {
 			log.Fatalf("cannot seed comments table: %v", err)
 		}
 	}
-	return post, users, comments, nil
+	return post, profiles, comments, nil
 }
 
 func refreshUserAndResetPasswordTable() error {

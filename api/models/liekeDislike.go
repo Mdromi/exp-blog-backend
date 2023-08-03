@@ -25,20 +25,27 @@ const (
 
 // SaveLikeDislike saves a like/dislike action to the database.
 func (ld *LikeDislike) SaveLike(db *gorm.DB) (*LikeDislike, error) {
+	// Check if the action is a valid one
+	if !isValidAction(ld.Action) {
+		return nil, errors.New("invalid action")
+	}
+
 	// Check if the user has previously disliked this post
 	dislikedBefore, err := CheckIfDislikedBefore(db, ld.PostID, ld.ProfileID)
 	if err != nil {
 		return nil, err
 	}
 
-	if dislikedBefore {
+	if dislikedBefore != "" {
 		// The user has previously disliked this post, so we need to remove the dislike
 		err = RemoveLikeDislike(db, ld.PostID, ld.ProfileID)
 		if err != nil {
 			return nil, err
 		}
 		// The user has already performed this like/dislike action before, so return a custom error message
-		return nil, errors.New("duplicate like/dislike action")
+		if dislikedBefore == ld.Action {
+			return nil, errors.New("you have already disliked this post")
+		}
 	}
 
 	// The user has not performed this like/dislike action before, so let's save it
@@ -53,7 +60,6 @@ func (ld *LikeDislike) SaveLike(db *gorm.DB) (*LikeDislike, error) {
 	}
 
 	return newLikeDislike, nil
-
 }
 
 func (l *LikeDislike) DeleteLike(db *gorm.DB) (*LikeDislike, error) {
@@ -106,20 +112,29 @@ func (l *LikeDislike) DeletePostLikes(db *gorm.DB, pid uint64) (int64, error) {
 }
 
 // CheckIfDislikedBefore checks if the user has previously disliked a post.
-func CheckIfDislikedBefore(db *gorm.DB, postID, profileID uint) (bool, error) {
+func CheckIfDislikedBefore(db *gorm.DB, postID, profileID uint) (string, error) {
 	likeDislike := LikeDislike{}
 
 	err := db.Debug().Table("like_dislikes").Where("post_id = ? AND profile_id = ?", postID, profileID).Take(&likeDislike).Error
 	if err == nil {
-		return true, nil // The user has previously disliked this post
+		return likeDislike.Action, nil // The user has previously disliked this post
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil // The user has not disliked this post before
+		return "", nil // The user has not disliked this post before
 	}
-	return false, err
+	return "", err
 }
 
 // RemoveDislike removes a dislike entry from the database for a post by a user.
 func RemoveLikeDislike(db *gorm.DB, postID, profileID uint) error {
 	likeDislike := LikeDislike{}
 	return db.Debug().Delete(&likeDislike, "post_id = ? AND profile_id = ?", postID, profileID).Error
+}
+
+func isValidAction(action string) bool {
+	switch action {
+	case ActionLike, ActionDislike, ActionHard, ActionSad:
+		return true
+	default:
+		return false
+	}
 }

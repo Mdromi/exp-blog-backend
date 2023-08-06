@@ -3,8 +3,11 @@ package tests
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/Mdromi/exp-blog-backend/api/controllers"
 	"github.com/Mdromi/exp-blog-backend/api/models"
@@ -21,6 +24,7 @@ var linksInstance = models.SocialLink{}
 var postInstance = models.Post{}
 var likeInstance = models.LikeDislike{}
 var commentInstance = models.Comment{}
+var commentReplyesInstance = models.Replyes{}
 
 func TestMain(m *testing.M) {
 	//Since we add our .env in .gitignore, Circle CI cannot see it, so see the else statement
@@ -74,6 +78,40 @@ func Database() {
 			log.Fatal("This is the error:", err)
 		} else {
 			fmt.Printf("We are connected to the %s database\n", TestDbDriver)
+		}
+	}
+}
+
+// Create a set to keep track of used numbers
+var usedUsernames = make(map[string]bool)
+var usedEmails = make(map[string]bool)
+
+// Function to get a random number from 0 to 9 without duplicates
+func getRandomNonDuplicate(username string) (string, string) {
+	rand.Seed(time.Now().UnixNano())
+
+	for {
+		// Check if all numbers are used for both username and email
+		if len(usedUsernames) == 10 || len(usedEmails) == 10 {
+			// Reset the used maps
+			usedUsernames = make(map[string]bool)
+			usedEmails = make(map[string]bool)
+		}
+
+		// Generate a random number from 0 to 9
+		randomNumber := rand.Intn(10)
+
+		// Generate the username and email using the random number
+		username := username + strconv.Itoa(randomNumber)
+		email := username + strconv.Itoa(randomNumber) + "@example.com"
+
+		// Check if the username and email are not used before
+		if !usedUsernames[username] && !usedEmails[email] {
+			// Add the username and email to the used maps
+			usedUsernames[username] = true
+			usedEmails[email] = true
+
+			return username, email
 		}
 	}
 }
@@ -136,10 +174,10 @@ func refreshUserProfileTable() error {
 }
 
 func seedOneUser() (models.User, error) {
-
+	username, email := getRandomNonDuplicate("pet")
 	user := models.User{
-		Username: "Pet",
-		Email:    "pet@example.com",
+		Username: username,
+		Email:    email,
 		Password: "password",
 	}
 
@@ -151,10 +189,11 @@ func seedOneUser() (models.User, error) {
 }
 
 func seedOneUserProfile() (models.Profile, error) {
+	username, email := getRandomNonDuplicate("pet")
 	// Create a user
 	user := models.User{
-		Username:   "Pet",
-		Email:      "pet@example.com",
+		Username:   username,
+		Email:      email,
 		Password:   "password",
 		AvatarPath: "image/pic",
 	}
@@ -180,28 +219,6 @@ func seedOneUserProfile() (models.Profile, error) {
 		return models.Profile{}, err
 	}
 
-	// // Create social links for the profile
-	// links := models.SocialLink{
-	// 	ProfileID: uint32(profile.ID),
-	// 	Website:   "https://example.com",
-	// 	Facebook:  "https://facebook.com/user",
-	// 	Twitter:   "https://twitter.com/user",
-	// 	Github:    "https://github.com/user",
-	// }
-
-	// // Save the links to the database using the Save method
-	// err = server.DB.Save(&links).Error
-	// if err != nil {
-	// 	return models.Profile{}, err
-	// }
-
-	// // Associate the social links with the profile
-	// profile.SocialLinks = &links
-	// err = server.DB.Save(&profile).Error
-	// if err != nil {
-	// 	return models.Profile{}, err
-	// }
-
 	// Update the user's ProfileID with the ID of the newly created profile
 	user.ProfileID = uint32(profile.ID)
 
@@ -215,20 +232,21 @@ func seedOneUserProfile() (models.Profile, error) {
 }
 
 func seedUsers() ([]models.User, error) {
-
+	username1, email1 := getRandomNonDuplicate("Steven")
+	username2, email2 := getRandomNonDuplicate("Kenny")
 	var err error
 	if err != nil {
 		return nil, err
 	}
 	users := []models.User{
 		models.User{
-			Username: "Steven",
-			Email:    "steven@example.com",
+			Username: username1,
+			Email:    email1,
 			Password: "password",
 		},
 		models.User{
-			Username: "Kenny",
-			Email:    "kenny@example.com",
+			Username: username2,
+			Email:    email2,
 			Password: "password",
 		},
 	}
@@ -489,6 +507,67 @@ func seedUsersProfilePostsAndComments() (models.Post, []*models.Profile, []model
 	return post, profiles, comments, nil
 }
 
+func refreshUserProfilePostAndCommentReplyeTable() error {
+	migrator := server.DB.Migrator()
+
+	// Drop the User, Post, and Comment tables if they exist
+	err := migrator.DropTable(&models.User{}, &models.Profile{}, &models.Post{}, &models.Comment{}, &models.Replyes{})
+	if err != nil {
+		return err
+	}
+
+	// AutoMigrate to create the User, Post, and Comment tables
+	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.Post{}, &models.Comment{}, &models.Replyes{})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Successfully refreshed user, post, comment, and replye tables")
+	return nil
+}
+
+func seedUsersProfilePostsAndCommentReplyes() (models.Post, []*models.Profile, models.Comment, []models.Replyes, error) {
+	post, _, comments, err := seedUsersProfilePostsAndComments()
+	if err != nil {
+		log.Fatalf("Error seeding user, post and comment table %v\n", err)
+	}
+
+	// Get the first comment
+	for _, v := range comments {
+		if v.ID == 2 {
+			continue
+		}
+		commentInstance.ID = v.ID //commentInstance is defined in setup_test.go
+	}
+
+	profiles, err := seedUsersProfiles()
+	if err != nil {
+		log.Fatalf("cannot seed users profile table on comment replyes: %v", err)
+	}
+
+	var newCommentReplye = []models.Replyes{
+		models.Replyes{
+			Body:      "user 1 made this comment replye",
+			CommentID: uint64(commentInstance.ID),
+			ProfileID: uint64(profiles[0].ID),
+			PostID:    uint32(post.ID),
+		},
+		models.Replyes{
+			Body:      "user 2 made this comment replye",
+			CommentID: uint64(commentInstance.ID),
+			ProfileID: uint64(profiles[1].ID),
+			PostID:    uint32(post.ID),
+		},
+	}
+
+	for i, _ := range newCommentReplye {
+		err = server.DB.Model(&models.Replyes{}).Create(&newCommentReplye[i]).Error
+		if err != nil {
+			log.Fatalf("cannot seed comment replyes table: %v", err)
+		}
+	}
+	return post, profiles, commentInstance, newCommentReplye, nil
+}
 func refreshUserAndResetPasswordTable() error {
 	migrator := server.DB.Migrator()
 
@@ -513,6 +592,7 @@ func seedResetPassword() (models.ResetPassword, error) {
 
 	resetDetails := models.ResetPassword{
 		Token: "awesometoken",
+
 		Email: "pet@example.com",
 	}
 	err := server.DB.Model(&models.ResetPassword{}).Create(&resetDetails).Error

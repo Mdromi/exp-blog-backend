@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (server *Server) CreateComment(c *gin.Context) {
+func (server *Server) CreateCommentReplye(c *gin.Context) {
 	// clear previous error if any
 	errList = map[string]string{}
 
@@ -62,6 +62,19 @@ func (server *Server) CreateComment(c *gin.Context) {
 		return
 	}
 
+	// Extrect CommentID
+	// GET /posts/123?commentID=123
+	commentID := c.Query("commentID")
+	if commentID == "" {
+		errList["Invalid_request"] = "Invalid Request"
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
+			"error":  errList,
+		})
+		return
+	}
+	cid, err := strconv.ParseUint(commentID, 10, 64)
+
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
@@ -72,8 +85,8 @@ func (server *Server) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment := models.Comment{}
-	err = json.Unmarshal(body, &comment)
+	replye := models.Replyes{}
+	err = json.Unmarshal(body, &replye)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -83,12 +96,13 @@ func (server *Server) CreateComment(c *gin.Context) {
 		return
 	}
 
-	// erter the profile and the postid. the comment body is automatically passed
-	comment.ProfileID = profileID
-	comment.PostID = pid
+	// erter the profile, comment and the postid. the reply body is automatically passed
+	replye.ProfileID = uint64(profileID)
+	replye.PostID = uint32(pid)
+	replye.CommentID = cid
 
-	comment.Preapre()
-	errorMessages := comment.Validate("")
+	replye.Preapre()
+	errorMessages := replye.Validate("")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -98,7 +112,7 @@ func (server *Server) CreateComment(c *gin.Context) {
 		return
 	}
 
-	commentCreated, err := comment.SaveComment(server.DB)
+	commentReplyCreated, err := replye.SaveCommentReplyes(server.DB)
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
@@ -110,58 +124,11 @@ func (server *Server) CreateComment(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, gin.H{
 		"status":   http.StatusCreated,
-		"response": commentCreated,
+		"response": commentReplyCreated,
 	})
 }
 
-func (server *Server) GetComments(c *gin.Context) {
-	// clear previous error if any
-	errList = map[string]string{}
-
-	postID := c.Param("id")
-
-	// Is a valdi post id given to us?
-	pid, err := strconv.ParseUint(postID, 10, 64)
-	if err != nil {
-		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
-		return
-	}
-
-	// check if the post exist:
-	post := models.Post{}
-	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
-	if err != nil {
-		errList["No_post"] = "No post found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
-		return
-	}
-
-	comment := models.Comment{}
-
-	comments, err := comment.GetComments(server.DB, pid)
-	if err != nil {
-		errList["No_comments"] = "No comments found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":   http.StatusOK,
-		"response": comments,
-	})
-}
-
-func (server *Server) UpdateComment(c *gin.Context) {
+func (server *Server) GetCommentReplyes(c *gin.Context) {
 	// clear previous error if any
 	errList = map[string]string{}
 
@@ -187,6 +154,60 @@ func (server *Server) UpdateComment(c *gin.Context) {
 	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
 
+	replye := models.Replyes{}
+	replyes, err := replye.GetCommentReplyes(server.DB, cid)
+	if err != nil {
+		errList["No_comments"] = "No comments found"
+		c.JSON(http.StatusNotFound, gin.H{
+			"status": http.StatusNotFound,
+			"error":  errList,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":   http.StatusOK,
+		"response": replyes,
+	})
+}
+
+func (server *Server) UpdateACommentReplyes(c *gin.Context) {
+	// clear previous error if any
+	errList = map[string]string{}
+
+	postID := c.Param("id")
+	_, err := strconv.ParseUint(postID, 10, 64)
+	if err != nil {
+		errList["Invalid_request"] = "Invalid Request"
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
+			"error":  errList,
+		})
+		return
+	}
+
+	commentID := c.Query("commentID")
+	if commentID == "" {
+		errList["Invalid_request"] = "Invalid Request"
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
+			"error":  errList,
+		})
+		return
+	}
+	cid, err := strconv.ParseUint(commentID, 10, 64)
+
+	replyID := c.Query("replyID")
+	if commentID == "" {
+		errList["Invalid_request"] = "Invalid Request"
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
+			"error":  errList,
+		})
+		return
+	}
+	rcid, err := strconv.ParseUint(replyID, 10, 64)
+
 	// check if the auth token is valid and get the user id from it
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
@@ -197,6 +218,7 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		})
 		return
 	}
+
 	// check if the comment exist
 	origComment := models.Comment{}
 
@@ -206,14 +228,6 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		errList["No_comment"] = "No Comment Found"
 		c.JSON(http.StatusNotFound, gin.H{
 			"status": http.StatusNotFound,
-			"error":  errList,
-		})
-		return
-	}
-	if profileID != origComment.ProfileID {
-		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
 			"error":  errList,
 		})
 		return
@@ -230,9 +244,22 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		return
 	}
 
+	// check if the comment replyes exist
+	origCommentReplyes := models.Replyes{}
+	err = server.DB.Debug().Model(models.Replyes{}).Where("id = ? AND comment_id = ? AND profile_id = ?", rcid, cid, profileID).Take(&origCommentReplyes).Error
+
+	if profileID != uint32(origCommentReplyes.ProfileID) {
+		errList["Unauthorized"] = "Unauthorized"
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status": http.StatusUnauthorized,
+			"error":  errList,
+		})
+		return
+	}
+
 	// start processing requested data
-	comment := models.Comment{}
-	err = json.Unmarshal(body, &comment)
+	replye := models.Replyes{}
+	err = json.Unmarshal(body, &replye)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -242,8 +269,8 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		return
 	}
 
-	comment.Preapre()
-	errorMessages := comment.Validate("")
+	replye.Preapre()
+	errorMessages := replye.Validate("")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -253,11 +280,11 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		return
 	}
 
-	comment.ID = origComment.ID //this is important to tell the model the post id to update, the other update field are set above
-	comment.ProfileID = origComment.ProfileID
-	comment.PostID = origComment.PostID
+	replye.ID = origCommentReplyes.ID //this is important to tell the model the post id to update, the other update field are set above
+	replye.ProfileID = origCommentReplyes.ProfileID
+	replye.PostID = origCommentReplyes.PostID
 
-	commentUpdated, err := comment.UpdateAComment(server.DB)
+	commentReplyUpdated, err := replye.UpdateACommentReplyes(server.DB)
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
@@ -269,15 +296,13 @@ func (server *Server) UpdateComment(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status":   http.StatusOK,
-		"response": commentUpdated,
+		"response": commentReplyUpdated,
 	})
 }
 
-func (server *Server) DeleteComment(c *gin.Context) {
-	commentID := c.Param("id")
-	// is a valid post id given to us?
-	cid, err := strconv.ParseUint(commentID, 10, 64)
-	if err != nil {
+func (server *Server) DeleteCommentReplye(c *gin.Context) {
+	commentID := c.Query("commentID")
+	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": http.StatusBadRequest,
@@ -285,6 +310,7 @@ func (server *Server) DeleteComment(c *gin.Context) {
 		})
 		return
 	}
+	cid, err := strconv.ParseUint(commentID, 10, 64)
 
 	// is this user authenticated?
 	profileID, err := auth.ExtractTokenID(c.Request)
@@ -297,20 +323,32 @@ func (server *Server) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	// check if the comment exist
-	comment := models.Comment{}
-	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&comment).Error
-	if err != nil {
-		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
+	replyID := c.Query("replyID")
+	if commentID == "" {
+		errList["Invalid_request"] = "Invalid Request"
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
+			"error":  errList,
+		})
+		return
+	}
+	rcid, err := strconv.ParseUint(replyID, 10, 64)
+
+	// check if the comment replyes exist
+	origCommentReplyes := models.Replyes{}
+	err = server.DB.Debug().Model(models.Replyes{}).Where("id = ? AND comment_id = ? AND profile_id = ?", rcid, cid, profileID).Take(&origCommentReplyes).Error
+
+	if profileID != uint32(origCommentReplyes.ProfileID) {
+		errList["Unauthorized"] = "Unauthorized"
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status": http.StatusUnauthorized,
 			"error":  errList,
 		})
 		return
 	}
 
-	// Is the authenticated user, the owner of this comment?
-	if profileID != comment.ProfileID {
+	// Is the authenticated user, the owner of this replye?
+	if profileID != uint32(origCommentReplyes.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
@@ -320,7 +358,7 @@ func (server *Server) DeleteComment(c *gin.Context) {
 	}
 
 	// If all the conditions are met, delete the post
-	_, err = comment.DeleteAComment(server.DB)
+	_, err = origCommentReplyes.DeleteAReplyes(server.DB)
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
 		c.JSON(http.StatusNotFound, gin.H{

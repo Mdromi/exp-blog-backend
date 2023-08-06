@@ -97,6 +97,14 @@ func (c *Comment) UpdateAComment(db *gorm.DB) (*Comment, error) {
 }
 
 func (c *Comment) DeleteAComment(db *gorm.DB) (int64, error) {
+	// Delete the comment replies first
+	replyesModel := Replyes{}
+	_, err := replyesModel.DeleteACommentReplyes(db, uint32(c.ID))
+	if err != nil {
+		return 0, err
+	}
+
+	// Now, delete the comment
 	db = db.Debug().Model(&Comment{}).Where("id = ?", c.ID).Take(&Comment{}).Delete(&Comment{})
 
 	if db.Error != nil {

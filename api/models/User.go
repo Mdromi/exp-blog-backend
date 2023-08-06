@@ -12,15 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// type User struct {
-// 	gorm.Model
-// 	Username   string `gorm:"size:255;not null;unique" json:"username" validate:"min=2,max=255"`
-// 	Email      string `gorm:"size:100;not null;unique" json:"email"`
-// 	Password   string `gorm:"size:100;not null;" json:"password"`
-// 	AvatarPath string `gorm:"size:255;" json:"avatar_path"`
-// 	ProfileID  uint32 `gorm:"null" json:"profile_id"`
-// }
-
 // User model represents user details
 type User struct {
 	gorm.Model

@@ -26,7 +26,7 @@ func TestCreateComment(t *testing.T) {
 
 	savedComment, err := newComment.SaveComment(server.DB)
 	if err != nil {
-		t.Errorf("this is the error getting the comment: %v\n", err)
+		t.Errorf("this is the error saved the comment: %v\n", err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func TestDeleteAComment(t *testing.T) {
 	}
 	isDeleted, err := commentInstance.DeleteAComment(server.DB)
 	if err != nil {
-		t.Errorf("this is the error deleting the like: %v\n", err)
+		t.Errorf("this is the error deleting the comment: %v\n", err)
 		return
 	}
 	assert.Equal(t, isDeleted, int64(1))

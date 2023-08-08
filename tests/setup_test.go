@@ -86,20 +86,20 @@ func Database() {
 var usedUsernames = make(map[string]bool)
 var usedEmails = make(map[string]bool)
 
-// Function to get a random number from 0 to 9 without duplicates
+// Function to get a random number from 0 to 100 without duplicates
 func getRandomNonDuplicate(username string) (string, string) {
 	rand.Seed(time.Now().UnixNano())
 
 	for {
 		// Check if all numbers are used for both username and email
-		if len(usedUsernames) == 10 || len(usedEmails) == 10 {
+		if len(usedUsernames) == 100 || len(usedEmails) == 100 {
 			// Reset the used maps
 			usedUsernames = make(map[string]bool)
 			usedEmails = make(map[string]bool)
 		}
 
-		// Generate a random number from 0 to 9
-		randomNumber := rand.Intn(10)
+		// Generate a random number from 0 to 100
+		randomNumber := rand.Intn(100)
 
 		// Generate the username and email using the random number
 		username := username + strconv.Itoa(randomNumber)

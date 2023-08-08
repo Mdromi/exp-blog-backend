@@ -13,7 +13,6 @@ import (
 
 	"github.com/Mdromi/exp-blog-backend/api/auth"
 	"github.com/Mdromi/exp-blog-backend/api/models"
-	"github.com/Mdromi/exp-blog-backend/api/security"
 	"github.com/Mdromi/exp-blog-backend/api/utils/fileformat"
 	"github.com/Mdromi/exp-blog-backend/api/utils/formaterror"
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,13 +20,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func (server *Server) CreateUserProfile(c *gin.Context) {
-	// clear previous error if any
-	errList = map[string]string{}
+	// Clear previous error if any
+	errList := map[string]string{}
 
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
@@ -44,6 +43,8 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
+		fmt.Println("Test 2")
+		fmt.Println("Unmarshal error:", err)
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
@@ -51,8 +52,52 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		return
 	}
 
+	userModel := models.User{}
+	// Check if UserID is valid and associated with an existing user
+	user, err := userModel.FindUserByID(server.DB, uint32(profile.UserID))
+	if err != nil {
+		errList["Unauthorized"] = "Invalid UserID or user does not exist"
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status": http.StatusUnauthorized,
+			"error":  errList,
+		})
+		return
+	}
+
+	// TASK: Also check the user are login or not?
+
+	if user.ProfileID != 0 {
+		errList["Profile_created"] = "You already created a profile"
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status": http.StatusUnauthorized,
+			"error":  errList,
+		})
+		return
+	}
+
+	// Check if name, title, and bio fields are provided
+	if profile.Name == "" || profile.Title == "" || profile.Bio == "" {
+		errList["Missing_fields"] = "Name, title, and bio are required"
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
+			"error":  errList,
+		})
+		return
+	}
+
 	profile.Prepare()
 	errorMessages := profile.Validate("")
+	if len(errorMessages) > 0 {
+		errList = errorMessages
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
+			"error":  errList,
+		})
+		return
+	}
+
+	// Validate the profile fields
+	errorMessages = validateProfileFields(&profile)
 	if len(errorMessages) > 0 {
 		errList = errorMessages
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -298,10 +343,51 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
+	// start processing the request
+	body, err := ioutil.ReadAll(c.Request.Body)
+	if err != nil {
+		errList["Invalid_body"] = "Unable to get request"
+		fmt.Println("STEP - 1")
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
+			"error":  errList,
+		})
+		return
+	}
+	fmt.Println("body", body)
+	requestBody := map[string]string{}
+	// var requestBody = models.Profile{}
+	err = json.Unmarshal(body, &requestBody)
+	if err != nil {
+		errList["Unmarshal_error"] = "Cannot unmarshal body"
+		fmt.Println("STEP - 2")
+		fmt.Println("err", err)
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
+			"error":  errList,
+		})
+		return
+	}
+
+	// userID := requestBody["user_id"]
+	// uid, err := strconv.ParseUint(userID, 10, 32)
+
+	// Check if UserID is valid and associated with an existing user
+	// _, err = FindUserByID(server.DB, uint32(uid))
+	// if err != nil {
+	// 	errList["Unauthorized_user"] = "Invalid UserID or user does not exist"
+	// 	c.JSON(http.StatusUnauthorized, gin.H{
+	// 		"status": http.StatusUnauthorized,
+	// 		"error":  errList,
+	// 	})
+	// 	return
+	// }
+
 	// Get user id from token for valid tokens
 	tokenID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
+		fmt.Println("STEP - 3")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
 			"error":  errList,
@@ -312,6 +398,7 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 	// if the id is not the authentiacation user id
 	if tokenID != 0 && tokenID != uint32(pid) {
 		errList["Unauthorized"] = "Unauthorized"
+		fmt.Println("STEP - 4")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
 			"error":  errList,
@@ -319,23 +406,12 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	// start processing the request
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
-
-	requestBody := map[string]string{}
-	err = json.Unmarshal(body, &requestBody)
-	if err != nil {
-		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
+	// Check if name, title, and bio fields are provided
+	if requestBody["name"] == "" || requestBody["title"] == "" || requestBody["bio"] == "" {
+		errList["Missing_fields"] = "Name, title, and bio are required"
+		fmt.Println("STEP - 5")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
 			"error":  errList,
 		})
 		return
@@ -347,18 +423,7 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", pid).Take(&formerProfile).Error
 	if err != nil {
 		errList["Profile_invalid"] = "The user is does not exist"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
-
-	// NOTE: USING PROFILE CONTROLLER UNDER USER
-	formerUser := models.User{}
-	err = server.DB.Debug().Model(models.User{}).Where("id = ?", formerProfile.UserID).Take(&formerUser).Error
-	if err != nil {
-		errList["User_invalid"] = "The user is does not exist"
+		fmt.Println("STEP - 6")
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
@@ -367,73 +432,32 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 	}
 
 	newProfile := models.Profile{}
-	// NEXT : UPGRADE THIS FUNCTIONALITY
-	newUser := models.User{}
-	// when current password has content.
-	if requestBody["current_password"] == "" && requestBody["new_password"] != "" {
-		errList["Empty_current"] = "Please Provide current password"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
-	if requestBody["current_password"] != "" && requestBody["new_password"] == "" {
-		errList["Empty_current"] = "Please Provide current password"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
-	if requestBody["current_password"] != "" && requestBody["new_password"] != "" {
-		// also check if the new password
-		if len(requestBody["new_password"]) < 6 {
-			errList["Invalid_password"] = "Password should be atleast 6 characters"
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"status": http.StatusUnprocessableEntity,
-				"error":  errList,
-			})
-			return
-		}
-
-		// if they do, check that the former password is correct
-		err = security.VerifyPassword(formerUser.Password, requestBody["current_password"])
-
-		if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
-			errList["Password_mismatch"] = "The password not correct"
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"status": http.StatusUnprocessableEntity,
-				"error":  errList,
-			})
-			return
-		}
-
-		// update both the password and the email
-		newUser.Email = requestBody["email"]
-		newUser.Password = requestBody["new_password"]
-	}
 
 	// The password fields not entered, so update only the email
 	newProfile.Name = requestBody["name"]
 	newProfile.Title = requestBody["title"]
 	newProfile.Bio = requestBody["bio"]
 
-	newUser.Prepare()
-	errorMessages := newUser.Validate("update")
-	if len(errorMessages) > 0 {
-		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
+	fmt.Println("STEP - 7")
+	newProfile.SocialLinks = GetSocialLinksFromBody(requestBody)
 
 	newProfile.Prepare()
-	errorMessages = newProfile.Validate("update")
+	errorMessages := newProfile.Validate("update")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
+		fmt.Println("STEP - 8")
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
+			"error":  errList,
+		})
+		return
+	}
+	fmt.Println("newProfile", newProfile)
+	// Validate the profile fields
+	errorMessages = validateProfileFields(&newProfile)
+	if len(errorMessages) > 0 {
+		errList = errorMessages
+		fmt.Println("STEP - 9")
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
@@ -441,25 +465,19 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	_, err = newUser.UpdateAUser(server.DB, uint32(formerProfile.UserID))
-	if err != nil {
-		errList := formaterror.FormatError(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
-		return
-	}
-
+	fmt.Println("STEP - 10")
 	updatedProfile, err := newProfile.UpdateAUserProfile(server.DB, uint32(pid))
 	if err != nil {
 		errList := formaterror.FormatError(err.Error())
+		fmt.Println("STEP - 11")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": http.StatusInternalServerError,
 			"error":  errList,
 		})
 		return
 	}
+
+	fmt.Println("updatedProfile", updatedProfile)
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":   http.StatusOK,
@@ -553,4 +571,34 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 		"status":   http.StatusOK,
 		"response": "User deleted",
 	})
+}
+
+// handlare function
+func validateProfileFields(profile *models.Profile) map[string]string {
+	errList := map[string]string{}
+
+	validate := validator.New()
+	if err := validate.Struct(profile); err != nil {
+		// Handle validation errors
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			// Handle error from the validation library itself (e.g., invalid struct)
+			errList["Validation_error"] = "Invalid input data"
+		} else {
+			// Handle specific validation errors for each field
+			for _, fieldErr := range err.(validator.ValidationErrors) {
+				fieldName := fieldErr.Field()
+				switch fieldName {
+				case "Name":
+					errList["Profile_name"] = "Name is required and should be between 2 and 50 characters"
+				case "Title":
+					errList["Profile_tile"] = "Title should be less than or equal to 100 characters"
+				case "Bio":
+					errList["Profile_bio"] = "Bio should be less than or equal to 500 characters"
+					// Add more cases for other fields if needed
+				}
+			}
+		}
+	}
+
+	return errList
 }

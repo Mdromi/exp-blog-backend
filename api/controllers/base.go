@@ -57,7 +57,13 @@ func (server *Server) Initialize(Dbdriver, DbUser, DbPassword, DbPort, DbHost, D
 		&models.LikeDislike{},
 		&models.Comment{},
 		&models.Replyes{},
+		&models.SocialLink{},
 	)
+
+	// Add the SocialLink field as JSONB type
+	// if err := server.DB.Migrator().AlterColumn(&models.Profile{}, "social_links", ""); err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	server.Router = gin.Default()
 	server.Router.Use(middlewares.CORSMiddleware())

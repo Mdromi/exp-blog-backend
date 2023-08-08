@@ -19,19 +19,21 @@ type Profile struct {
 	SocialLinks *SocialLink `json:"social_links"`
 }
 
-func (u *Profile) BeforeSave() error {
-	return nil
-}
-
 func (p *Profile) Prepare() {
 	// Sanitize and trim strings
 	p.Name = html.EscapeString(strings.TrimSpace(p.Name))
 	p.Title = html.EscapeString(strings.TrimSpace(p.Title))
 	p.Bio = html.EscapeString(strings.TrimSpace(p.Bio))
 
+	// Ensure SocialLink is initialized if nil
 	if p.SocialLinks == nil {
 		p.SocialLinks = &SocialLink{}
 	}
+
+	// Sanitize and trim social links
+	p.SocialLinks.Facebook = html.EscapeString(strings.TrimSpace(p.SocialLinks.Facebook))
+	p.SocialLinks.Twitter = html.EscapeString(strings.TrimSpace(p.SocialLinks.Twitter))
+	p.SocialLinks.Instagram = html.EscapeString(strings.TrimSpace(p.SocialLinks.Instagram))
 }
 
 func (p *Profile) AfterFind() (err error) {
@@ -97,9 +99,8 @@ func (p *Profile) SaveUserProfile(db *gorm.DB) (*Profile, error) {
 		return nil, err
 	}
 
-	// Update the User.ProfileID
+	// Update the User.ProfileID with the newly created profile's ID
 	if p.UserID != 0 {
-		// Update the User.ProfileID with the newly created profile's ID
 		err = db.Debug().Model(&User{}).Where("id = ?", p.UserID).Update("profile_id", p.ID).Error
 		if err != nil {
 			return nil, err
@@ -136,9 +137,10 @@ func (p *Profile) FindUserProfileByID(db *gorm.DB, pid uint32) (*Profile, error)
 func (p *Profile) UpdateAUserProfile(db *gorm.DB, pid uint32) (*Profile, error) {
 	db = db.Debug().Model(&Profile{}).Where("id = ?", pid).Take(&Profile{}).UpdateColumns(
 		map[string]interface{}{
-			"name":  p.Name,
-			"title": p.Title,
-			"bio":   p.Bio,
+			"name":         p.Name,
+			"title":        p.Title,
+			"bio":          p.Bio,
+			"social_links": p.SocialLinks,
 		},
 	)
 

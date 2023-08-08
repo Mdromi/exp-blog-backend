@@ -32,7 +32,7 @@ func TestCreateComment(t *testing.T) {
 
 	assert.Equal(t, newComment.ProfileID, savedComment.ProfileID)
 	assert.Equal(t, newComment.PostID, savedComment.PostID)
-	assert.Equal(t, newComment.Body, "This is the comment body")
+	assert.Equal(t, newComment.Body, savedComment.Body)
 }
 
 func TestCommentsForAPost(t *testing.T) {

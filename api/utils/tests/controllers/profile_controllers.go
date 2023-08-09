@@ -11,18 +11,16 @@ import (
 
 	"github.com/Mdromi/exp-blog-backend/api/controllers"
 	"github.com/Mdromi/exp-blog-backend/api/models"
-	"github.com/Mdromi/exp-blog-backend/api/tests"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/Mdromi/exp-blog-backend/tests/testdata"
 )
 
-var createProfileTestCase = tests.CreateProfileTestCase
-var server = controllers.Server{}
-
-func ExecutecreateProfileTestCase(t *testing.T, v createProfileTestCase, loginUserID uint) {
+func ExecuteCreateProfileTestCase(t *testing.T, v testdata.CreateProfileTestCase, loginUserID uint, server *controllers.Server) {
 	r := gin.Default()
 	r.POST("/profiles", server.CreateUserProfile)
-	req, err := http.NewRequest(http.MethodPost, "/profiles", bytes.NewBufferString(v.inputJSON))
+	req, err := http.NewRequest(http.MethodPost, "/profiles", bytes.NewBufferString(v.InputJSON))
 	if err != nil {
 		t.Fatalf("this is the error: %v\n", err)
 	}
@@ -35,16 +33,16 @@ func ExecutecreateProfileTestCase(t *testing.T, v createProfileTestCase, loginUs
 		t.Errorf("Cannot convert to json: %v", err)
 	}
 
-	if v.statusCode == http.StatusCreated {
+	if v.StatusCode == http.StatusCreated {
 		responseMap := responseInterface["response"].(map[string]interface{})
-		assert.Equal(t, responseMap["name"], v.name)
-		assert.Equal(t, responseMap["user_id"], float64(v.userID))
+		assert.Equal(t, responseMap["name"], v.Name)
+		assert.Equal(t, responseMap["user_id"], float64(v.UserID))
 	} else {
 		errorResponse, ok := responseInterface["error"].(map[string]interface{})
 		if !ok {
 			t.Errorf("Received unexpected response format: %v", responseInterface)
 		} else {
-			assertErrorResponse(t, errorResponse, v.statusCode)
+			AssertErrorResponse(t, errorResponse, v.StatusCode)
 		}
 	}
 
@@ -54,8 +52,39 @@ func ExecutecreateProfileTestCase(t *testing.T, v createProfileTestCase, loginUs
 		log.Fatal(err)
 	}
 }
+func ExecuteUpdateProfileTest(t *testing.T, v testdata.UpdateProfileTestCase, server *controllers.Server) {
+	r := gin.Default()
+	r.PUT("/profiles/:id", server.UpdateAUserProfile)
 
-func assertErrorResponse(t *testing.T, responseMap map[string]interface{}, statusCode int) {
+	req, err := http.NewRequest(http.MethodPut, "/profiles/"+v.ID, bytes.NewBufferString(v.UpdateJSON))
+	if err != nil {
+		t.Fatalf("Error creating request: %v\n", err)
+	}
+
+	req.Header.Set("Authorization", v.TokenGiven)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	var responseInterface map[string]interface{}
+	err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+	if err != nil {
+		t.Errorf("Cannot convert to JSON: %v", err)
+	}
+
+	assert.Equal(t, rr.Code, v.StatusCode)
+
+	if v.StatusCode == http.StatusOK {
+		responseMap := responseInterface["response"].(map[string]interface{})
+		assert.Equal(t, responseMap["name"], "Pet 1")
+		assert.Equal(t, responseMap["title"], "This is the title - 1")
+		assert.Equal(t, responseMap["profile_pic"], "image/pic")
+		assert.Equal(t, responseMap["user_id"], float64(v.UserID))
+	} else {
+		AssertErrorResponse(t, responseInterface["error"].(map[string]interface{}), v.StatusCode)
+	}
+}
+
+func AssertErrorResponse(t *testing.T, responseMap map[string]interface{}, statusCode int) {
 	errorMessages := map[int]map[string]string{
 		http.StatusBadRequest: {
 			"Unmarshal_error": "Cannot unmarshal body",
@@ -93,17 +122,28 @@ func assertErrorResponse(t *testing.T, responseMap map[string]interface{}, statu
 	}
 
 	if errorMsgs, ok := errorMessages[statusCode]; ok {
-		assertErrorMessages(t, responseMap, errorMsgs)
+		AssertErrorMessages(t, responseMap, errorMsgs)
 	} else {
 		t.Errorf("No error messages defined for status code: %d", statusCode)
 	}
 }
 
-func assertErrorMessages(t *testing.T, responseMap map[string]interface{}, errorMessages map[string]string) {
+func AssertErrorMessages(t *testing.T, responseMap map[string]interface{}, errorMessages map[string]string) {
 	for key, expected := range errorMessages {
 		if responseMap[key] != nil {
 			fmt.Println("statusCode, errorMsgs", responseMap[key])
 			assert.Equal(t, responseMap[key], expected)
 		}
 	}
+}
+
+func AssertDeleteProfileErrorResponses(t *testing.T, responseInterface map[string]interface{}) {
+	responseMap := responseInterface["error"].(map[string]interface{})
+
+	errorMessages := map[string]string{
+		"Invalid_request": "Invalid Request",
+		"Unauthorized":    "Unauthorized",
+	}
+
+	AssertErrorMessages(t, responseMap, errorMessages)
 }

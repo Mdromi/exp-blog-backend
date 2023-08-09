@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"html"
 	"strings"
 
@@ -151,6 +152,7 @@ func (p *Profile) UpdateAUserProfile(db *gorm.DB, pid uint32) (*Profile, error) 
 	// This is the display the updated profile
 	err := db.Debug().Model(&Profile{}).Where("id = ?", pid).Take(&p).Error
 	if err != nil {
+		fmt.Println("Erorr Profile", err)
 		return &Profile{}, err
 	}
 	return p, nil
@@ -202,6 +204,7 @@ func (p *Profile) DeleteAUserProfile(db *gorm.DB, pid uint32) (int64, error) {
 
 	// Delete the profile
 	db = db.Debug().Delete(&profileToDelete)
+
 	if db.Error != nil {
 		return 0, db.Error
 	}

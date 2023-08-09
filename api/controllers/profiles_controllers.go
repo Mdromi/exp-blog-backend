@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
+
 	"github.com/joho/godotenv"
 )
 
@@ -54,11 +54,12 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 
 	userModel := models.User{}
 	// Check if UserID is valid and associated with an existing user
+	fmt.Println("profile.UserID", profile.UserID)
 	user, err := userModel.FindUserByID(server.DB, uint32(profile.UserID))
 	if err != nil {
-		errList["Unauthorized"] = "Invalid UserID or user does not exist"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
+		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
+		c.JSON(http.StatusNotFound, gin.H{
+			"status": http.StatusNotFound,
 			"error":  errList,
 		})
 		return
@@ -68,8 +69,8 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 
 	if user.ProfileID != 0 {
 		errList["Profile_created"] = "You already created a profile"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
 		})
 		return
@@ -89,19 +90,19 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 	errorMessages := profile.Validate("")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
 			"error":  errList,
 		})
 		return
 	}
 
 	// Validate the profile fields
-	errorMessages = validateProfileFields(&profile)
+	errorMessages = ValidateProfileFields(&profile)
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
 			"error":  errList,
 		})
 		return
@@ -111,8 +112,8 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": http.StatusBadRequest,
 			"error":  errList,
 		})
 		return
@@ -343,53 +344,45 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	// start processing the request
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		errList["Invalid_body"] = "Unable to get request"
-		fmt.Println("STEP - 1")
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
-	fmt.Println("body", body)
-	requestBody := map[string]string{}
-	// var requestBody = models.Profile{}
-	err = json.Unmarshal(body, &requestBody)
-	if err != nil {
-		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		fmt.Println("STEP - 2")
-		fmt.Println("err", err)
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
-		return
-	}
-
-	// userID := requestBody["user_id"]
-	// uid, err := strconv.ParseUint(userID, 10, 32)
-
-	// Check if UserID is valid and associated with an existing user
-	// _, err = FindUserByID(server.DB, uint32(uid))
-	// if err != nil {
-	// 	errList["Unauthorized_user"] = "Invalid UserID or user does not exist"
-	// 	c.JSON(http.StatusUnauthorized, gin.H{
-	// 		"status": http.StatusUnauthorized,
-	// 		"error":  errList,
-	// 	})
-	// 	return
-	// }
-
 	// Get user id from token for valid tokens
 	tokenID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		fmt.Println("STEP - 3")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
+			"error":  errList,
+		})
+		return
+	}
+
+	// Check if profile is valid and associated with an existing user
+	profile, err := FindUserProfileByID(server.DB, uint32(pid))
+	if err != nil {
+		errList["Not_Found_profile"] = "Not Found the profile"
+		c.JSON(http.StatusNotFound, gin.H{
+			"status": http.StatusNotFound,
+			"error":  errList,
+		})
+		return
+	}
+
+	// Check if UserID is valid and associated with an existing user
+	user, err := FindUserByID(server.DB, uint32(profile.UserID))
+	if err != nil {
+		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
+		c.JSON(http.StatusNotFound, gin.H{
+			"status": http.StatusNotFound,
+			"error":  errList,
+		})
+		return
+	}
+
+	// TASK: Also check the user are login or not?
+
+	if user.ProfileID != uint32(pid) {
+		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
+		c.JSON(http.StatusNotFound, gin.H{
+			"status": http.StatusNotFound,
 			"error":  errList,
 		})
 		return
@@ -398,7 +391,6 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 	// if the id is not the authentiacation user id
 	if tokenID != 0 && tokenID != uint32(pid) {
 		errList["Unauthorized"] = "Unauthorized"
-		fmt.Println("STEP - 4")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
 			"error":  errList,
@@ -406,24 +398,10 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Check if name, title, and bio fields are provided
-	if requestBody["name"] == "" || requestBody["title"] == "" || requestBody["bio"] == "" {
-		errList["Missing_fields"] = "Name, title, and bio are required"
-		fmt.Println("STEP - 5")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
-		return
-	}
-
-	// check for previous details
-	formerProfile := models.Profile{}
-
-	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", pid).Take(&formerProfile).Error
+	// start processing the request
+	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		errList["Profile_invalid"] = "The user is does not exist"
-		fmt.Println("STEP - 6")
+		errList["Invalid_body"] = "Unable to get request"
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
@@ -433,31 +411,49 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 
 	newProfile := models.Profile{}
 
-	// The password fields not entered, so update only the email
-	newProfile.Name = requestBody["name"]
-	newProfile.Title = requestBody["title"]
-	newProfile.Bio = requestBody["bio"]
+	err = json.Unmarshal(body, &newProfile)
+	if err != nil {
+		errList["Unmarshal_error"] = "Cannot unmarshal body"
+		fmt.Println("err", err)
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
+			"error":  errList,
+		})
+		return
+	}
 
-	fmt.Println("STEP - 7")
-	newProfile.SocialLinks = GetSocialLinksFromBody(requestBody)
+	// Check if name, title, and bio fields are provided
+	if newProfile.Name == "" || newProfile.Title == "" || newProfile.Bio == "" {
+		errList["Missing_fields"] = "Name, title, and bio are required"
+		fmt.Println("STEP - 5")
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"status": http.StatusUnprocessableEntity,
+			"error":  errList,
+		})
+		return
+	}
 
 	newProfile.Prepare()
 	errorMessages := newProfile.Validate("update")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		fmt.Println("STEP - 8")
+		if errorMessages["user_id"] != "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status": http.StatusUnauthorized,
+				"error":  errList,
+			})
+			return
+		}
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
 		})
 		return
 	}
-	fmt.Println("newProfile", newProfile)
 	// Validate the profile fields
-	errorMessages = validateProfileFields(&newProfile)
+	errorMessages = ValidateProfileFields(&newProfile)
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		fmt.Println("STEP - 9")
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"status": http.StatusUnprocessableEntity,
 			"error":  errList,
@@ -465,19 +461,15 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("STEP - 10")
 	updatedProfile, err := newProfile.UpdateAUserProfile(server.DB, uint32(pid))
 	if err != nil {
 		errList := formaterror.FormatError(err.Error())
-		fmt.Println("STEP - 11")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": http.StatusInternalServerError,
 			"error":  errList,
 		})
 		return
 	}
-
-	fmt.Println("updatedProfile", updatedProfile)
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":   http.StatusOK,
@@ -502,8 +494,20 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 		return
 	}
 
+	// Check if profile is valid and associated with an existing user
+	profile, err := FindUserProfileByID(server.DB, uint32(pid))
+	if err != nil {
+		errList["Not_Found_profile"] = "Not Found the profile"
+		c.JSON(http.StatusNotFound, gin.H{
+			"status": http.StatusNotFound,
+			"error":  errList,
+		})
+		return
+	}
+
 	// get user id from the token for valid tokens
 	tokenID, err = auth.ExtractTokenID(c.Request)
+	fmt.Println("tokenID", tokenID)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -514,7 +518,7 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 	}
 
 	// If the id is not the authenticated user id
-	if tokenID != 0 && tokenID != uint32(pid) {
+	if tokenID != 0 && tokenID != uint32(profile.UserID) {
 		errList["Unauthorized"] = "Unauthorized"
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": http.StatusUnauthorized,
@@ -523,8 +527,42 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 		return
 	}
 
-	profile := models.Profile{}
-	_, err = profile.DeleteAUserProfile(server.DB, uint32(pid))
+	// Also delete the posts, likes and the comments that this user created if any:
+
+	comment := models.Comment{}
+	likeDislike := models.LikeDislike{}
+	post := models.Post{}
+
+	_, err = post.DeleteUserPosts(server.DB, uint32(pid))
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  err,
+		})
+		return
+	}
+	_, err = comment.DeleteUserComments(server.DB, uint32(pid))
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  err,
+		})
+		return
+	}
+	_, err = likeDislike.DeleteUserLikes(server.DB, uint32(pid))
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  err,
+		})
+		return
+	}
+
+	deletedProfile := models.Profile{}
+	_, err = deletedProfile.DeleteAUserProfile(server.DB, uint32(pid))
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
 		c.JSON(http.StatusNotFound, gin.H{
@@ -533,72 +571,9 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 		})
 		return
 	}
-	// Also delete the posts, likes and the comments that this user created if any:
-
-	// comment := models.Comment{}
-	// like := models.Like{}
-	// post := models.Post{}
-
-	// _, err = post.DeleteUserPosts(server.DB, uint32(pid))
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  err,
-	// 	})
-	// 	return
-	// }
-	// _, err = comment.DeleteUserComments(server.DB, uint32(pid))
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  err,
-	// 	})
-	// 	return
-	// }
-	// _, err = like.DeleteUserLikes(server.DB, uint32(pid))
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  err,
-	// 	})
-	// 	return
-	// }
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":   http.StatusOK,
 		"response": "User deleted",
 	})
-}
-
-// handlare function
-func validateProfileFields(profile *models.Profile) map[string]string {
-	errList := map[string]string{}
-
-	validate := validator.New()
-	if err := validate.Struct(profile); err != nil {
-		// Handle validation errors
-		if _, ok := err.(*validator.InvalidValidationError); ok {
-			// Handle error from the validation library itself (e.g., invalid struct)
-			errList["Validation_error"] = "Invalid input data"
-		} else {
-			// Handle specific validation errors for each field
-			for _, fieldErr := range err.(validator.ValidationErrors) {
-				fieldName := fieldErr.Field()
-				switch fieldName {
-				case "Name":
-					errList["Profile_name"] = "Name is required and should be between 2 and 50 characters"
-				case "Title":
-					errList["Profile_tile"] = "Title should be less than or equal to 100 characters"
-				case "Bio":
-					errList["Profile_bio"] = "Bio should be less than or equal to 500 characters"
-					// Add more cases for other fields if needed
-				}
-			}
-		}
-	}
-
-	return errList
 }

@@ -11,57 +11,52 @@ import (
 
 	"github.com/Mdromi/exp-blog-backend/api/controllers"
 	"github.com/Mdromi/exp-blog-backend/api/models"
-	utils_test_controllers "github.com/Mdromi/exp-blog-backend/api/utils/tests/controllers"
+	executeablefunctions "github.com/Mdromi/exp-blog-backend/tests/executeable_functions"
 	"github.com/Mdromi/exp-blog-backend/tests/testdata"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
 
+// TestCreateUserProfile tests the creation of user profiles.
 func TestCreateUserProfile(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
+	// Set up Gin in test mode and initialize database tables.
 	gin.SetMode(gin.TestMode)
-
 	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Seed a user and retrieve their loginUserID.
 	user, err := seedOneUser()
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	loginUserID := user.ID
 
-	type SocialLink struct {
-		Facebook  string
-		Twitter   string
-		Instagram string
-	}
-
+	// Get test samples for creating user profiles and iterate over them.
 	samples := testdata.CreateProfileSamples(loginUserID)
-	for _, v := range samples {
-		// executecreateProfileTestCase(t, v, loginUserID)
-		utils_test_controllers.ExecuteCreateProfileTestCase(t, v, loginUserID, &server)
-	}
+	executeablefunctions.ExecuteCreateProfileTestCase(t, samples, loginUserID, &server)
 }
 
+// TestGetUserProfile tests the retrieval of user profiles.
 func TestGetUserProfile(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	// Refresh database tables and seed user profiles.
 	err := refreshAllTable()
 	assert.NoError(t, err)
-
 	_, err = seedUsersProfiles()
 	assert.NoError(t, err)
 
+	// Set up Gin and create an HTTP request for getting user profiles.
 	r := gin.Default()
 	r.GET("/profiles", server.GetUserProfiles)
-
 	req, err := http.NewRequest(http.MethodGet, "/profiles", nil)
 	assert.NoError(t, err)
 
+	// Serve the HTTP request and parse the response.
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 
@@ -76,64 +71,49 @@ func TestGetUserProfile(t *testing.T) {
 	assert.Equal(t, len(theUserProfiles), 2)
 }
 
+// TestGetUserProfileByID tests the retrieval of a user profile by ID.
 func TestGetUserProfileByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	// Refresh database tables and seed a user profile.
 	err := refreshAllTable()
 	assert.NoError(t, err)
-
 	profile, err := seedOneUserProfile()
 	assert.NoError(t, err)
 
-	profileSample := []struct {
-		id         string
-		statusCode int
-		name       string
-		userID     uint
-	}{
-		{
-			id:         strconv.Itoa(int(profile.ID)),
-			statusCode: 200,
-			name:       profile.Name,
-			userID:     profile.UserID,
-		},
-		{
-			id:         "unknwon",
-			statusCode: 400,
-		},
-		{
-			id:         strconv.Itoa(12322), // an id that does not exist
-			statusCode: 404,
-		},
-	}
-
+	// Set up Gin and iterate over profile samples.
 	r := gin.Default()
 	r.GET("/profiles/:id", server.GetUserProfile)
 
-	for _, v := range profileSample {
-		req, _ := http.NewRequest("GET", "/profiles/"+v.id, nil)
+	// Get test samples for get user profiles and iterate over them.
+	samples := testdata.GetUserProfileSample(profile)
+
+	for _, v := range samples {
+		// Create an HTTP request for getting a user profile by ID.
+		req, _ := http.NewRequest("GET", "/profiles/"+v.ID, nil)
 		rr := httptest.NewRecorder()
 		r.ServeHTTP(rr, req)
 
+		// Parse the response body and perform assertions based on the test case.
 		responseInterface := make(map[string]interface{})
 		err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
 		assert.NoError(t, err)
 
-		assert.Equal(t, rr.Code, v.statusCode)
+		assert.Equal(t, rr.Code, v.StatusCode)
 
-		if v.statusCode == 200 {
+		if v.StatusCode == 200 {
 			responseMap, ok := responseInterface["response"].(map[string]interface{})
 			assert.True(t, ok)
 
 			userID := uint(responseMap["user_id"].(float64))
-			assert.Equal(t, responseMap["name"], v.name)
-			assert.Equal(t, userID, v.userID)
+			assert.Equal(t, responseMap["name"], v.Name)
+			assert.Equal(t, userID, v.UserID)
 		}
-		if v.statusCode == 400 || v.statusCode == 404 {
+		if v.StatusCode == 400 || v.StatusCode == 404 {
 			responseMap, ok := responseInterface["error"].(map[string]interface{})
 			assert.True(t, ok)
 
-			utils_test_controllers.AssertErrorMessages(t, responseMap, map[string]string{
+			executeablefunctions.AssertErrorMessages(t, responseMap, map[string]string{
 				"Invalid_request": "Invalid Request",
 				"No_user":         "No User Found",
 			})
@@ -141,78 +121,63 @@ func TestGetUserProfileByID(t *testing.T) {
 	}
 }
 
+// TestDeleteProfile tests the deletion of user profiles.
 func TestDeleteProfile(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	// Refresh database tables and seed a user profile.
 	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	profileSample := []struct {
-		id         string
-		tokenGiven string
-		statusCode int
-	}{
-		{
-			id:         "",
-			tokenGiven: "",
-			statusCode: 200,
-		},
-		{
-			id:         "",
-			tokenGiven: "",
-			statusCode: 401,
-		},
-		{
-			id:         "",
-			tokenGiven: "This is an incorrect token",
-			statusCode: 401,
-		},
-		{
-			id:         "unknown",
-			tokenGiven: "",
-			statusCode: 400,
-		},
-	}
+	// Get test samples for get user profiles and iterate over them.
+	samples := testdata.DeleteUserProfileSample()
 
+	// Set up Gin and iterate over profile samples.
 	r := gin.Default()
 	r.DELETE("/profiles/:id", server.DeleteUserProfile)
 
-	for _, v := range profileSample {
+	for _, v := range samples {
+		// Prepare the test environment, seed a profile, and get a token.
 		prepareTestEnvironment(t, server.DB)
-
 		profile, tokenString := seedProfileAndSignIn(server.DB)
 
-		if v.statusCode != 400 {
-			v.id = strconv.Itoa(int(profile.ID))
+		// Update the sample with valid profile ID and token.
+		if v.StatusCode != 400 {
+			v.ID = strconv.Itoa(int(profile.ID))
 		}
-		if v.statusCode != 401 && v.statusCode != 400 {
-			v.tokenGiven = tokenString
+		if v.StatusCode != 401 && v.StatusCode != 400 {
+			v.TokenGiven = tokenString
 		}
 
-		req, _ := http.NewRequest(http.MethodDelete, "/profiles/"+v.id, nil)
-		req.Header.Set("Authorization", v.tokenGiven)
-		rr := httptest.NewRecorder()
-		r.ServeHTTP(rr, req)
-
-		responseInterface := make(map[string]interface{})
-		err := json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
-		if err != nil {
-			t.Errorf("Cannot convert to json: %v", err)
-		}
-		assert.Equal(t, rr.Code, v.statusCode)
-
-		if v.statusCode == 200 {
-			assert.Equal(t, responseInterface["response"], "User deleted")
-		}
-		if v.statusCode == 400 || v.statusCode == 401 {
-			utils_test_controllers.AssertDeleteProfileErrorResponses(t, responseInterface)
-		}
+		executeablefunctions.ExecuteDeleteProfileTest(t, v, r)
 	}
 }
 
+// TestUpdateProfile tests the update of user profiles.
+func TestUpdateProfile(t *testing.T) {
+	// t.Parallel()
+
+	// Set up Gin in test mode and initialize database tables.
+	gin.SetMode(gin.TestMode)
+	err := refreshAllTable()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	profile, tokenString := seedProfileAndSignIn(server.DB)
+	profileID := strconv.Itoa(int(profile.ID))
+	loginUserID := profile.UserID
+
+	// Get test samples for updating user profiles and iterate over them.
+	samples := testdata.UpdateProfileSamples(profileID, tokenString, loginUserID)
+	executeablefunctions.ExecuteUpdateProfileTest(t, samples, &server)
+}
+
+// seedProfileAndSignIn seeds a user profile, signs in the associated user, and returns the profile and token string.
 func seedProfileAndSignIn(db *gorm.DB) (models.Profile, string) {
+	// Seed a user profile and find the associated user.
 	profile, err := seedOneUserProfile()
 	if err != nil {
 		log.Fatal(err)
@@ -223,6 +188,7 @@ func seedProfileAndSignIn(db *gorm.DB) (models.Profile, string) {
 		log.Fatal(err)
 	}
 
+	// Sign in the user and retrieve the authentication token.
 	password := "password"
 	tokenInterface, err := server.SignIn(user.Email, password)
 	if err != nil {
@@ -234,48 +200,7 @@ func seedProfileAndSignIn(db *gorm.DB) (models.Profile, string) {
 	return profile, tokenString
 }
 
-func TestUpdateProfile(t *testing.T) {
-	t.Parallel()
-
-	gin.SetMode(gin.TestMode)
-
-	err := refreshAllTable()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	profile, err := seedOneUserProfile()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// profileID := profile.ID
-	profileID := strconv.Itoa(int(profile.ID))
-
-	loginUserID := profile.UserID
-
-	// Check if UserID is valid and associated with an existing user
-	user, err := controllers.FindUserByID(server.DB, uint32(loginUserID))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Login the user and get the authentication token
-	tokenInterface, err := server.SignIn(user.Email, user.Password)
-	if err != nil {
-		log.Fatalf("cannot login: %v\n", err)
-	}
-
-	token := tokenInterface["token"] // get only the token
-	tokenString := fmt.Sprintf("Bearer %v", token)
-
-	samples := testdata.UpdateProfileSamples(profileID, tokenString, loginUserID)
-
-	for _, v := range samples {
-		utils_test_controllers.ExecuteUpdateProfileTest(t, v, &server)
-	}
-}
-
+// prepareTestEnvironment prepares the test environment by refreshing the user profile table.
 func prepareTestEnvironment(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	err := refreshUserProfileTable()

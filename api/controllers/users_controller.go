@@ -33,10 +33,7 @@ func (server *Server) CreateUser(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -45,10 +42,7 @@ func (server *Server) CreateUser(c *gin.Context) {
 	err = json.Unmarshal(body, &user)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -56,10 +50,7 @@ func (server *Server) CreateUser(c *gin.Context) {
 	errorMessages := user.Validate("")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -67,10 +58,7 @@ func (server *Server) CreateUser(c *gin.Context) {
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 
@@ -88,10 +76,7 @@ func (server *Server) GetUsers(c *gin.Context) {
 	users, err := user.FindAllUsers(server.DB)
 	if err != nil {
 		errList["No_user"] = "No User Found"
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -106,10 +91,7 @@ func (server *Server) GetUser(c *gin.Context) {
 	uid, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -118,10 +100,7 @@ func (server *Server) GetUser(c *gin.Context) {
 	userGotten, err := user.FindUserByID(server.DB, uint32(uid))
 	if err != nil {
 		errList["No_user"] = "No User Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -175,10 +154,7 @@ func (server *Server) UpdateAvatar(c *gin.Context) {
 	uid, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -186,40 +162,28 @@ func (server *Server) UpdateAvatar(c *gin.Context) {
 	tokenID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
 	// if the id is not the authenticated user id
 	if tokenID != 0 && tokenID != uint32(uid) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
 		errList["Invalid_file"] = "Invalid File"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
 	f, err := file.Open()
 	if err != nil {
 		errList["Invalid_file"] = "Invalid File"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 	defer f.Close()
@@ -228,10 +192,7 @@ func (server *Server) UpdateAvatar(c *gin.Context) {
 	// The image should not be more than 500KB
 	if size > int64(512000) {
 		errList["To_large"] = "Sorry, Please upload an Image of 500KB or less"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 	buffer := make([]byte, size)
@@ -241,10 +202,7 @@ func (server *Server) UpdateAvatar(c *gin.Context) {
 	// if the image is valid
 	if !strings.HasPrefix(fileType, "image") {
 		errList["Not_Image"] = "Please Upload a valid image"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 	filePath := fileformat.UniqueFormat(file.Filename)
@@ -299,10 +257,7 @@ func (server *Server) UpdateAvatar(c *gin.Context) {
 
 	if err != nil {
 		errList["Cannot_Save"] = "Cannot Save Image, Pls try again later"
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -320,10 +275,7 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	uid, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -331,20 +283,14 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	tokenID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
 	// if the id is not the authentiacation user id
 	if tokenID != 0 && tokenID != uint32(uid) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -352,10 +298,7 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -363,10 +306,7 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	err = json.Unmarshal(body, &requestBody)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -375,10 +315,7 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	err = server.DB.Debug().Model(models.User{}).Where("id = ?", uid).Take(&formerUser).Error
 	if err != nil {
 		errList["User_invalid"] = "The user is does not exist"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -386,28 +323,19 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	// when current password has content.
 	if requestBody["current_password"] == "" && requestBody["new_password"] != "" {
 		errList["Empty_current"] = "Please Provide current password"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 	if requestBody["current_password"] != "" && requestBody["new_password"] == "" {
 		errList["Empty_current"] = "Please Provide current password"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 	if requestBody["current_password"] != "" && requestBody["new_password"] != "" {
 		// also check if the new password
 		if len(requestBody["new_password"]) < 6 {
 			errList["Invalid_password"] = "Password should be atleast 6 characters"
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"status": http.StatusUnprocessableEntity,
-				"error":  errList,
-			})
+			handleError(c, http.StatusUnprocessableEntity, errList)
 			return
 		}
 		// if they do, check that the former password is correct
@@ -415,10 +343,7 @@ func (server *Server) UpdateUser(c *gin.Context) {
 
 		if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
 			errList["Password_mismatch"] = "The password not correct"
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"status": http.StatusUnprocessableEntity,
-				"error":  errList,
-			})
+			handleError(c, http.StatusUnprocessableEntity, errList)
 			return
 		}
 
@@ -435,20 +360,14 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	errorMessages := newUser.Validate("update")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
 	updatedUser, err := newUser.UpdateAUser(server.DB, uint32(uid))
 	if err != nil {
 		errList := formaterror.FormatError(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -467,10 +386,7 @@ func (server *Server) DeleteUser(c *gin.Context) {
 	uid, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -478,20 +394,14 @@ func (server *Server) DeleteUser(c *gin.Context) {
 	tokenID, err = auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
 	// If the id is not the authenticated user id
 	if tokenID != 0 && tokenID != uint32(uid) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -499,45 +409,33 @@ func (server *Server) DeleteUser(c *gin.Context) {
 	_, err = user.DeleteAUser(server.DB, uint32(uid))
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
 	// Also delete the posts, likes and the comments that this user created if any:
-	// comment := models.Comment{}
-	// like := models.Like{}
-	// post := models.Post{}
+	comment := models.Comment{}
+	likeDislike := models.LikeDislike{}
+	post := models.Post{}
 
-	// _, err = post.DeleteUserPosts(server.DB, uint32(uid))
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  err,
-	// 	})
-	// 	return
-	// }
-	// _, err = comment.DeleteUserComments(server.DB, uint32(uid))
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  err,
-	// 	})
-	// 	return
-	// }
-	// _, err = like.DeleteUserLikes(server.DB, uint32(uid))
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  err,
-	// 	})
-	// 	return
-	// }
+	_, err = post.DeleteUserPosts(server.DB, uint32(uid))
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
+	_, err = comment.DeleteUserComments(server.DB, uint32(uid))
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
+	_, err = likeDislike.DeleteUserLikes(server.DB, uint32(uid))
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":   http.StatusOK,

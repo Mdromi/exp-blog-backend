@@ -128,6 +128,7 @@ func refreshAllTable() error {
 	// AutoMigrate to create the Profile table
 	err = server.DB.AutoMigrate(&models.User{}, &models.Profile{}, &models.SocialLink{}, &models.ResetPassword{}, &models.Post{}, &models.LikeDislike{}, &models.Comment{}, models.Replyes{})
 	if err != nil {
+		fmt.Println("err", err)
 		return err
 	}
 

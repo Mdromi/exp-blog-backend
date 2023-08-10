@@ -21,10 +21,7 @@ func (server *Server) CreatePost(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -33,20 +30,14 @@ func (server *Server) CreatePost(c *gin.Context) {
 	err = json.Unmarshal(body, &post)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
 	pid, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 	// check if the user exist:
@@ -54,10 +45,7 @@ func (server *Server) CreatePost(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", pid).Take(&profile).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -67,19 +55,13 @@ func (server *Server) CreatePost(c *gin.Context) {
 	errorMessages := post.Validate()
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
 	if len(post.Tags) == 0 {
 		errList["Invalid_tags"] = "Invalid Tagas"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	// result := ConvertTags(post.Tags)
@@ -92,10 +74,7 @@ func (server *Server) CreatePost(c *gin.Context) {
 	postCreated, err := post.SavePost(server.DB)
 	if err != nil {
 		errList := formaterror.FormatError(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
@@ -111,10 +90,7 @@ func (server *Server) GetPosts(c *gin.Context) {
 	posts, err := post.FindAllPosts(server.DB)
 	if err != nil {
 		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -128,10 +104,7 @@ func (server *Server) GetPost(c *gin.Context) {
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -139,10 +112,7 @@ func (server *Server) GetPost(c *gin.Context) {
 	postReceived, err := post.FindPostById(server.DB, pid)
 	if err != nil {
 		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
@@ -161,10 +131,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -172,10 +139,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -185,18 +149,12 @@ func (server *Server) UpdatePost(c *gin.Context) {
 
 	if err != nil {
 		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	if profileID != uint32(origPost.AuthorID) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -204,10 +162,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -216,10 +171,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	err = json.Unmarshal(body, &post)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -230,10 +182,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	errorMessages := post.Validate()
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -243,10 +192,7 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	postUpdated, err := post.UpdateAPost(server.DB)
 	if err != nil {
 		errList := formaterror.FormatError(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -261,10 +207,7 @@ func (server *Server) DeletePost(c *gin.Context) {
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -274,10 +217,7 @@ func (server *Server) DeletePost(c *gin.Context) {
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -286,21 +226,14 @@ func (server *Server) DeletePost(c *gin.Context) {
 	err = server.DB.Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
 		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
 	// Is the authenticated user, the owner of this post?
 	if profileID != uint32(post.AuthorID) {
 		errList["Unauthorized"] = "Unauthorized"
-		fmt.Println("problem 4")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -308,39 +241,27 @@ func (server *Server) DeletePost(c *gin.Context) {
 	_, err = post.DeleteAPost(server.DB)
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
-		fmt.Println("problem 5")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 
-	// commnnt := models.Comment{}
-	// like := models.Like{}
+	commnnt := models.Comment{}
+	likeDislike := models.LikeDislike{}
 
 	// also delete the likes and the comments that thi post have:
-	// _, err = commnnt.DeletePostComments(server.DB, pid)
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	fmt.Println("problem 6")
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  errList,
-	// 	})
-	// 	return
-	// }
+	_, err = commnnt.DeletePostComments(server.DB, pid)
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
 
-	// _, err = like.DeletePostLikes(server.DB, pid)
-	// if err != nil {
-	// 	errList["Other_error"] = "Please try again later"
-	// 	fmt.Println("problem 7")
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"status": http.StatusInternalServerError,
-	// 		"error":  errList,
-	// 	})
-	// 	return
-	// }
+	_, err = likeDislike.DeletePostLikes(server.DB, pid)
+	if err != nil {
+		errList["Other_error"] = "Please try again later"
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":   http.StatusOK,
@@ -354,10 +275,7 @@ func (server *Server) GetUserProfilePosts(c *gin.Context) {
 	pid, err := strconv.ParseUint(profileID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -366,10 +284,7 @@ func (server *Server) GetUserProfilePosts(c *gin.Context) {
 
 	if err != nil {
 		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

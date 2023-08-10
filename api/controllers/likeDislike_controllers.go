@@ -19,19 +19,13 @@ func (server *Server) LikePost(c *gin.Context) {
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -40,10 +34,7 @@ func (server *Server) LikePost(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", profileID).Take(&profile).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -52,10 +43,7 @@ func (server *Server) LikePost(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -64,10 +52,7 @@ func (server *Server) LikePost(c *gin.Context) {
 	action := c.Query("action")
 	if action == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -81,10 +66,7 @@ func (server *Server) LikePost(c *gin.Context) {
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  errList,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
@@ -104,10 +86,7 @@ func (server *Server) GetLikes(c *gin.Context) {
 	if err != nil {
 		fmt.Println("this is the error: ", err)
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -116,10 +95,7 @@ func (server *Server) GetLikes(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
 		errList["No_post"] = "No Post Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
@@ -128,10 +104,7 @@ func (server *Server) GetLikes(c *gin.Context) {
 	likes, err := like.GetLikesInfo(server.DB, uint(pid))
 	if err != nil {
 		errList["No_likes"] = "No Likes found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -146,10 +119,7 @@ func (server *Server) UnLikePost(c *gin.Context) {
 	lid, err := strconv.ParseUint(likeID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -157,10 +127,7 @@ func (server *Server) UnLikePost(c *gin.Context) {
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -168,20 +135,14 @@ func (server *Server) UnLikePost(c *gin.Context) {
 	err = server.DB.Debug().Model(models.LikeDislike{}).Where("id = ?", lid).Take(&like).Error
 	if err != nil {
 		errList["No_like"] = "No Like Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
 	// Is the authenticated user, the owner of this post?
 	if profileID != uint32(like.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -189,10 +150,7 @@ func (server *Server) UnLikePost(c *gin.Context) {
 	_, err = like.DeleteLike(server.DB)
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

@@ -3,6 +3,7 @@ package testdata
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Mdromi/exp-blog-backend/api/models"
 )
@@ -15,9 +16,17 @@ type CreateProfileTestCase struct {
 	Name       string
 	Title      string
 	ProfilePic string
-	SocialLink models.SocialLink
+	// SocialLink SocialLink
 }
 
+// Define the SocialLink structure for testing.
+type SocialLink struct {
+	Facebook  string
+	Twitter   string
+	Instagram string
+}
+
+// UpdateProfileTestCase represents a test case for updating a user profile
 type UpdateProfileTestCase struct {
 	ID         string
 	UpdateJSON string
@@ -27,6 +36,19 @@ type UpdateProfileTestCase struct {
 	Title      string
 	ProfilePic string
 	TokenGiven string
+}
+
+type GetUserProfileSampleCase struct {
+	ID         string
+	StatusCode int
+	Name       string
+	UserID     uint
+}
+
+type DeleteUserProfileSampleCase struct {
+	ID         string
+	TokenGiven string
+	StatusCode int
 }
 
 func CreateProfileSamples(loginUserID uint) []CreateProfileTestCase {
@@ -309,6 +331,50 @@ func UpdateProfileSamples(profileID, tokenString string, loginUserID uint) []Upd
 		},
 	}
 	return updateProfileTestCase
+}
+
+func GetUserProfileSample(profile models.Profile) []GetUserProfileSampleCase {
+	return []GetUserProfileSampleCase{
+		{
+			ID:         strconv.Itoa(int(profile.ID)),
+			StatusCode: 200,
+			Name:       profile.Name,
+			UserID:     profile.UserID,
+		},
+		{
+			ID:         "unknwon",
+			StatusCode: 400,
+		},
+		{
+			ID:         strconv.Itoa(12322), // an id that does not exist
+			StatusCode: 404,
+		},
+	}
+}
+
+func DeleteUserProfileSample() []DeleteUserProfileSampleCase {
+	return []DeleteUserProfileSampleCase{
+		{
+			ID:         "",
+			TokenGiven: "",
+			StatusCode: 200,
+		},
+		{
+			ID:         "",
+			TokenGiven: "",
+			StatusCode: 401,
+		},
+		{
+			ID:         "",
+			TokenGiven: "This is an incorrect token",
+			StatusCode: 401,
+		},
+		{
+			ID:         "unknown",
+			TokenGiven: "",
+			StatusCode: 400,
+		},
+	}
 }
 
 // func setupTestDependencies() (*controllers.Server, uint, error) {

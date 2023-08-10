@@ -20,10 +20,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -31,10 +28,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -43,10 +37,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", profileID).Take(&profile).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -55,10 +46,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -67,10 +55,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
@@ -78,10 +63,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -89,10 +71,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	err = json.Unmarshal(body, &replye)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -105,10 +84,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	errorMessages := replye.Validate("")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -116,10 +92,7 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
@@ -136,20 +109,14 @@ func (server *Server) GetCommentReplyes(c *gin.Context) {
 	_, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
@@ -158,10 +125,7 @@ func (server *Server) GetCommentReplyes(c *gin.Context) {
 	replyes, err := replye.GetCommentReplyes(server.DB, cid)
 	if err != nil {
 		errList["No_comments"] = "No comments found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
@@ -179,20 +143,14 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	_, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
@@ -200,10 +158,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	replyID := c.Query("replyID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	rcid, err := strconv.ParseUint(replyID, 10, 64)
@@ -212,10 +167,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -226,10 +178,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 
 	if err != nil {
 		errList["No_comment"] = "No Comment Found"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
@@ -237,10 +186,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		errList["Invalid_body"] = "Unable to get request"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -250,10 +196,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 
 	if profileID != uint32(origCommentReplyes.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -262,10 +205,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	err = json.Unmarshal(body, &replye)
 	if err != nil {
 		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -273,10 +213,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	errorMessages := replye.Validate("")
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
 
@@ -288,10 +225,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": http.StatusInternalServerError,
-			"error":  err,
-		})
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -304,10 +238,7 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
@@ -316,20 +247,14 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
 	replyID := c.Query("replyID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": http.StatusBadRequest,
-			"error":  errList,
-		})
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 	rcid, err := strconv.ParseUint(replyID, 10, 64)
@@ -340,20 +265,14 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 
 	if profileID != uint32(origCommentReplyes.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
 	// Is the authenticated user, the owner of this replye?
 	if profileID != uint32(origCommentReplyes.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status": http.StatusUnauthorized,
-			"error":  errList,
-		})
+		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -361,10 +280,7 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 	_, err = origCommentReplyes.DeleteAReplyes(server.DB)
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
-		c.JSON(http.StatusNotFound, gin.H{
-			"status": http.StatusNotFound,
-			"error":  errList,
-		})
+		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

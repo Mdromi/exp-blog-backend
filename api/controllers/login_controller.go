@@ -20,39 +20,29 @@ func (server *Server) Login(c *gin.Context) {
 
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status":      http.StatusUnprocessableEntity,
-			"first error": "Unable to get request",
-		})
-
+		errorMessage := map[string]string{"first error": "Unable to get request"}
+		handleError(c, http.StatusUnprocessableEntity, errorMessage)
 		return
 	}
 
 	user := models.User{}
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  "Cannot unmarshal body",
-		})
+		// Convert the untyped string constant into a map[string]string
+		errorMessage := map[string]string{"error": "Cannot unmarshal body"}
+		handleError(c, http.StatusUnprocessableEntity, errorMessage)
 		return
 	}
 	errorMessages := user.Validate("login")
 	if len(errorMessages) > 0 {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  errorMessages,
-		})
+		handleError(c, http.StatusUnprocessableEntity, errorMessages)
 		return
 	}
 
 	userData, err := server.SignIn(user.Email, user.Password)
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"error":  formattedError,
-		})
+		handleError(c, http.StatusUnprocessableEntity, formattedError)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

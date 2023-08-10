@@ -284,12 +284,14 @@ func seedUsersProfiles() ([]*models.Profile, error) {
 
 		profiles[i] = profile
 
-		// Update the User model's Profile field with the created profile
-		err = server.DB.Debug().Model(&models.User{}).Where("id = ?", user.ID).Take(&user.ProfileID).Error
+		// Update the User model's ProfileID field with the created profile's ID
+		user.ProfileID = uint32(profile.ID) // Update ProfileID
 		err = server.DB.Save(&user).Error
 		if err != nil {
 			return nil, err
 		}
+
+		fmt.Println("user.ProfileID", user.ProfileID)
 	}
 
 	return profiles, nil
@@ -373,8 +375,8 @@ func seedUsersProfileAndPosts() ([]*models.Profile, []models.Post, error) {
 		},
 	}
 
-	for i, _ := range profiles {
-		posts[i].AuthorID = profiles[i].ID
+	for i, profile := range profiles {
+		posts[i].AuthorID = profile.ID
 
 		err = server.DB.Model(&models.Post{}).Create(&posts[i]).Error
 		if err != nil {

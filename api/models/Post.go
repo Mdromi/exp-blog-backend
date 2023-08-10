@@ -5,20 +5,21 @@ import (
 	"html"
 	"strings"
 
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
 // Post model represents a post
 type Post struct {
 	gorm.Model
-	Title          string   `gorm:"size:255;not null" json:"title"`
-	PostPermalinks string   `gorm:"size:255" json:"post_permalinks"`
-	Content        string   `gorm:"type:text;not null" json:"body"`
-	AuthorID       uint     `gorm:"not null" json:"author_id"`
-	Author         Profile  `gorm:"foreignKey:AuthorID" json:"author"`
-	Tags           []string `gorm:"type:text[]" json:"tags"`
-	Thumbnails     string   `gorm:"size:255" json:"thumbnails"`
-	ReadTime       string   `json:"read_time"`
+	Title          string         `gorm:"size:255;not null;unique" json:"title"`
+	PostPermalinks string         `gorm:"size:255" json:"post_permalinks"`
+	Content        string         `gorm:"type:text;not null" json:"content"`
+	AuthorID       uint           `gorm:"not null" json:"author_id"`
+	Author         Profile        `gorm:"foreignKey:AuthorID" json:"author"`
+	Tags           pq.StringArray `gorm:"type:text[]" json:"tags"`
+	Thumbnails     string         `gorm:"size:255" json:"thumbnails"`
+	ReadTime       string         `json:"read_time"`
 }
 
 func (p *Post) Prepare() {
@@ -54,7 +55,7 @@ func (p *Post) Validate() map[string]string {
 
 	var errorMessages = make(map[string]string)
 	if p.Title == "" {
-		err = errors.New("Required Title")
+		err = errors.New("Title is required")
 		errorMessages["Required_title"] = err.Error()
 
 	}
@@ -116,7 +117,7 @@ func (p *Post) UpdateAPost(db *gorm.DB) (*Post, error) {
 		return &Post{}, err
 	}
 	if p.ID != 0 {
-		err = db.Debug().Model(&Post{}).Where("id = ?", p.AuthorID).Take(&p.Author).Error
+		err = db.Debug().Model(&Profile{}).Where("user_id = ?", p.AuthorID).Take(&p.Author).Error
 		if err != nil {
 			return &Post{}, err
 		}

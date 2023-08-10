@@ -12,6 +12,7 @@ import (
 	"github.com/Mdromi/exp-blog-backend/api/utils/formaterror"
 	"github.com/Mdromi/exp-blog-backend/api/utils/postformator"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 )
 
 func (server *Server) CreatePost(c *gin.Context) {
@@ -50,12 +51,13 @@ func (server *Server) CreatePost(c *gin.Context) {
 	}
 
 	post.AuthorID = uint(pid) // the authenticated user is the one creating the post
+	// fmt.Printf("Post: %+v\n", post)
 
 	post.Prepare()
 	errorMessages := post.Validate()
 	if len(errorMessages) > 0 {
 		errList = errorMessages
-		handleError(c, http.StatusUnprocessableEntity, errList)
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
@@ -64,12 +66,13 @@ func (server *Server) CreatePost(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
-	// result := ConvertTags(post.Tags)
-
-	// postPermalinks := postformator.CreatePostPermalinks(post.Title)
+	// result := postformator.ConvertTags(post.Tags)
 
 	post.PostPermalinks = postformator.CreatePostPermalinks(post.Title)
 	post.ReadTime = postformator.CalculateReadingTime(post.Content)
+
+	// Convert the array of strings to a pq.StringArray
+	post.Tags = pq.StringArray(post.Tags)
 
 	postCreated, err := post.SavePost(server.DB)
 	if err != nil {
@@ -81,7 +84,6 @@ func (server *Server) CreatePost(c *gin.Context) {
 		"status":   http.StatusCreated,
 		"response": postCreated,
 	})
-
 }
 
 func (server *Server) GetPosts(c *gin.Context) {
@@ -136,12 +138,16 @@ func (server *Server) UpdatePost(c *gin.Context) {
 	}
 
 	//Check if the auth token is valid and  get the user id from it
-	profileID, err := auth.ExtractTokenID(c.Request)
+	userID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
+
+	// find the Author profile
+	profile, err := FindUserProfileByID(server.DB, userID)
+	profileID := profile.ID
 
 	//Check if the post exist
 	origPost := models.Post{}
@@ -152,7 +158,9 @@ func (server *Server) UpdatePost(c *gin.Context) {
 		handleError(c, http.StatusNotFound, errList)
 		return
 	}
-	if profileID != uint32(origPost.AuthorID) {
+
+	fmt.Println("AuthorID", origPost.AuthorID)
+	if profileID != origPost.AuthorID {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)
 		return

@@ -15,6 +15,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var ExecuteCreateUserTestCase = executeablefunctions.ExecuteCreateUserTestCase
+var ExecuteGetUserByIdTestCase = executeablefunctions.ExecuteGetUserByIdTestCase
+var ExecuteUpdateUserTest = executeablefunctions.ExecuteUpdateUserTest
+var ExecuteDeleteUserTest = executeablefunctions.ExecuteDeleteUserTest
+
 func TestCreateUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -25,7 +30,7 @@ func TestCreateUser(t *testing.T) {
 
 	// Get test samples for creating user and iterate over them.
 	samples := testdata.CreateUserSamples()
-	executeablefunctions.ExecuteCreateUserTestCase(t, samples, &server)
+	ExecuteCreateUserTestCase(t, samples, &server)
 }
 
 func TestGetUsers(t *testing.T) {
@@ -80,7 +85,7 @@ func TestGetUserByID(t *testing.T) {
 
 	// Get test samples for getUserByID  and iterate over them.
 	samples := testdata.GetUserByIDSamples(user)
-	executeablefunctions.ExecuteGetUserByIdTestCase(t, samples, &server)
+	ExecuteGetUserByIdTestCase(t, samples, &server)
 }
 
 func TestUpdateUser(t *testing.T) {
@@ -122,7 +127,7 @@ func TestUpdateUser(t *testing.T) {
 
 	// Get test samples for update user  and iterate over them.
 	samples := testdata.UpdateUserSamples(tokenString, AuthUsername, AuthEmail2, AuthID)
-	executeablefunctions.ExecuteUpdateUserTest(t, samples, &server)
+	ExecuteUpdateUserTest(t, samples, &server)
 }
 
 func TestDeleteUser(t *testing.T) {
@@ -151,5 +156,5 @@ func TestDeleteUser(t *testing.T) {
 
 	// Get test samples for delete user  and iterate over them.
 	samples := testdata.DeleteUserSample(tokenString, userID)
-	executeablefunctions.ExecuteDeleteUserTest(t, samples, &server)
+	ExecuteDeleteUserTest(t, samples, &server)
 }

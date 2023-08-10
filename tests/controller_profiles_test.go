@@ -18,6 +18,10 @@ import (
 	"gorm.io/gorm"
 )
 
+var ExecuteCreateProfileTestCase = executeablefunctions.ExecuteCreateProfileTestCase
+var ExecuteDeleteProfileTest = executeablefunctions.ExecuteDeleteProfileTest
+var ExecuteUpdateProfileTest = executeablefunctions.ExecuteUpdateProfileTest
+
 // TestCreateUserProfile tests the creation of user profiles.
 func TestCreateUserProfile(t *testing.T) {
 	// t.Parallel()
@@ -37,7 +41,7 @@ func TestCreateUserProfile(t *testing.T) {
 
 	// Get test samples for creating user profiles and iterate over them.
 	samples := testdata.CreateProfileSamples(loginUserID)
-	executeablefunctions.ExecuteCreateProfileTestCase(t, samples, loginUserID, &server)
+	ExecuteCreateProfileTestCase(t, samples, loginUserID, &server)
 }
 
 // TestGetUserProfile tests the retrieval of user profiles.
@@ -151,7 +155,7 @@ func TestDeleteProfile(t *testing.T) {
 			v.TokenGiven = tokenString
 		}
 
-		executeablefunctions.ExecuteDeleteProfileTest(t, v, r)
+		ExecuteDeleteProfileTest(t, v, r)
 	}
 }
 
@@ -172,7 +176,7 @@ func TestUpdateProfile(t *testing.T) {
 
 	// Get test samples for updating user profiles and iterate over them.
 	samples := testdata.UpdateProfileSamples(profileID, tokenString, loginUserID)
-	executeablefunctions.ExecuteUpdateProfileTest(t, samples, &server)
+	ExecuteUpdateProfileTest(t, samples, &server)
 }
 
 // seedProfileAndSignIn seeds a user profile, signs in the associated user, and returns the profile and token string.

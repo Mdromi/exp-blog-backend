@@ -89,7 +89,7 @@ func TestUpdatePost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Author token and authPostID
-	tokenString, AuthPostID := getTokenAndPostID()
+	tokenString, AuthPostID := getTokenAndPostIDForPost()
 
 	// Get test samples for updating post and iterate over them.
 	samples := testdata.UpdatePostTestSamples(tokenString, AuthPostID)
@@ -100,14 +100,14 @@ func TestDeletePost(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// Author token and authPostID
-	tokenString, AuthPostID := getTokenAndPostID()
+	tokenString, AuthPostID := getTokenAndPostIDForPost()
 
 	// Get test samples for updating post and iterate over them.
 	samples := testdata.DeletePostTestSamples(tokenString, AuthPostID)
 	ExecuteDeletePost(t, samples, &server)
 }
 
-func getTokenAndPostID() (string, uint) {
+func getTokenAndPostIDForPost() (string, uint) {
 	var PostUserEmail, PostUserPassword string
 	var AuthPostID uint
 

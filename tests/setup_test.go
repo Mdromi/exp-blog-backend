@@ -290,8 +290,6 @@ func seedUsersProfiles() ([]*models.Profile, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Println("user.ProfileID", user.ProfileID)
 	}
 
 	return profiles, nil

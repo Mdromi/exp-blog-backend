@@ -25,7 +25,7 @@ func ExecuteCreateUserTestCase(t *testing.T, samples []testdata.CreateUserTestCa
 		r.ServeHTTP(rr, req)
 
 		responseInterface := make(map[string]interface{})
-		err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err = json.Unmarshal(rr.Body.Bytes(), &responseInterface)
 		if err != nil {
 			t.Errorf("Cannot convert to json: %v", err)
 		}
@@ -59,7 +59,8 @@ func ExecuteGetUserByIdTestCase(t *testing.T, samples []testdata.GetUserByIDTest
 		r.ServeHTTP(rr, req)
 
 		responseInterface := make(map[string]interface{})
-		err := json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err := json.Unmarshal(rr.Body.Bytes(), &responseInterface)
+
 		if err != nil {
 			t.Errorf("Cannot convert to json: %v\n", err)
 		}
@@ -95,7 +96,7 @@ func ExecuteUpdateUserTest(t *testing.T, samples []testdata.UpdateUserTestCase, 
 		r.ServeHTTP(rr, req)
 
 		responseInterface := make(map[string]interface{})
-		err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err = json.Unmarshal(rr.Body.Bytes(), &responseInterface)
 		if err != nil {
 			t.Errorf("Cannot convert to json: %v", err)
 		}
@@ -130,7 +131,8 @@ func ExecuteDeleteUserTest(t *testing.T, samples []testdata.DeleteUserTestCase, 
 		r.ServeHTTP(rr, req)
 
 		responseInterface := make(map[string]interface{})
-		err := json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err := json.Unmarshal(rr.Body.Bytes(), &responseInterface)
+
 		if err != nil {
 			t.Errorf("Cannot convert to json: %v", err)
 		}

@@ -28,11 +28,6 @@ func (p *Post) Prepare() {
 	p.PostPermalinks = html.EscapeString(strings.TrimSpace(p.PostPermalinks))
 	p.Content = html.EscapeString(strings.TrimSpace(p.Content))
 
-	// Initialize related fields
-	// if p.Author == nil {
-	// 	p.Author = &Profile{} // Initialize Author field as an empty Profile struct
-	// }
-
 	if p.Tags == nil {
 		p.Tags = make([]string, 0) // Initialize Tags field as an empty string slice
 	}
@@ -44,10 +39,6 @@ func (p *Post) Prepare() {
 	if p.ReadTime == "" {
 		p.ReadTime = "" // Initialize ReadTime field as an empty string
 	}
-
-	// if p.Comments == nil {
-	// 	p.Comments = make([]*Comment, 0) // Initialize Comments field as an empty Comment slice
-	// }
 }
 
 func (p *Post) Validate() map[string]string {

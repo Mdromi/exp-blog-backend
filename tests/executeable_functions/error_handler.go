@@ -1,7 +1,6 @@
 package executeablefunctions
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -38,6 +37,7 @@ func AssertErrorResponse(t *testing.T, responseMap map[string]interface{}, statu
 			"Not_Found_profile": "Not Found the profile",
 			"Not_Found_user":    "Invalid UserID or user does not exist",
 			"No_post":           "No Post Found",
+			"No_comment":        "No Comment Found",
 		},
 		http.StatusInternalServerError: {
 			"Internal_error": "Internal server error occurred",
@@ -48,6 +48,7 @@ func AssertErrorResponse(t *testing.T, responseMap map[string]interface{}, statu
 			"Unmarshal_error":      "Cannot unmarshal body",
 			"Profile_created":      "You already created a profile",
 			"Invalid_body":         "Unable to get request",
+			"Required_body":        "Required Comment",
 			// Define error messages for http.StatusUnprocessableEntity here...
 		},
 		// ... add more status code error messages as needed ...
@@ -65,7 +66,6 @@ func AssertErrorResponse(t *testing.T, responseMap map[string]interface{}, statu
 func AssertErrorMessages(t *testing.T, responseMap map[string]interface{}, errorMessages map[string]string) {
 	for key, expected := range errorMessages {
 		if responseMap[key] != nil {
-			fmt.Println("statusCode, errorMsgs", responseMap[key])
 			assert.Equal(t, responseMap[key], expected)
 		}
 	}

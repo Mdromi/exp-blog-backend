@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -13,40 +14,8 @@ import (
 )
 
 func (server *Server) CreateComment(c *gin.Context) {
-	// clear previous error if any
-	errList = map[string]string{}
-
-	postID := c.Param("id")
-	pid, err := strconv.ParseUint(postID, 10, 64)
-	if err != nil {
-		errList["Invalid_request"] = "Invalid Request"
-		handleError(c, http.StatusBadRequest, errList)
-		return
-	}
-
-	// check the token
-	profileID, err := auth.ExtractTokenID(c.Request)
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
-		return
-	}
-
-	// check if the profile exists;
-	profile := models.Profile{}
-	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", profileID).Take(&profile).Error
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
-		return
-	}
-
-	// check if the post exist
-	post := models.Post{}
-	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
+	pid, profileID, user, post := server.commonCommentCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
 		return
 	}
 
@@ -78,6 +47,8 @@ func (server *Server) CreateComment(c *gin.Context) {
 	}
 
 	commentCreated, err := comment.SaveComment(server.DB)
+	fmt.Printf("commentCreated: %+v\n", commentCreated)
+	fmt.Println()
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		errList = formattedError
@@ -108,7 +79,7 @@ func (server *Server) GetComments(c *gin.Context) {
 	post := models.Post{}
 	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
-		errList["No_post"] = "No post found"
+		errList["No_post"] = "No Post Found"
 		handleError(c, http.StatusNotFound, errList)
 		return
 	}
@@ -129,17 +100,13 @@ func (server *Server) GetComments(c *gin.Context) {
 }
 
 func (server *Server) UpdateComment(c *gin.Context) {
-	// clear previous error if any
-	errList = map[string]string{}
 
-	postID := c.Param("id")
-	_, err := strconv.ParseUint(postID, 10, 64)
-	if err != nil {
-		errList["Invalid_request"] = "Invalid Request"
-		handleError(c, http.StatusBadRequest, errList)
+	pid, profileID, user, post := server.commonCommentCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
 		return
 	}
 
+	// GET /comment/123?commentID=102
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
@@ -147,24 +114,19 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		return
 	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
-
-	// check if the auth token is valid and get the user id from it
-	profileID, err := auth.ExtractTokenID(c.Request)
 	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
+		errList["Invalid_request"] = "Invalid Request"
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
-	// check if the comment exist
 	origComment := models.Comment{}
-
 	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&origComment).Error
-
 	if err != nil {
 		errList["No_comment"] = "No Comment Found"
 		handleError(c, http.StatusNotFound, errList)
 		return
 	}
+
 	if profileID != origComment.ProfileID {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)
@@ -214,41 +176,40 @@ func (server *Server) UpdateComment(c *gin.Context) {
 }
 
 func (server *Server) DeleteComment(c *gin.Context) {
-	commentID := c.Param("id")
-	// is a valid post id given to us?
+	pid, profileID, user, post := server.commonCommentCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
+		return
+	}
+
+	// DELETE /comment/123?commentID=102
+	commentID := c.Query("commentID")
+	if commentID == "" {
+		errList["Invalid_request"] = "Invalid Request"
+		handleError(c, http.StatusBadRequest, errList)
+		return
+	}
 	cid, err := strconv.ParseUint(commentID, 10, 64)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
-
-	// is this user authenticated?
-	profileID, err := auth.ExtractTokenID(c.Request)
+	origComment := models.Comment{}
+	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&origComment).Error
 	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
-		return
-	}
-
-	// check if the comment exist
-	comment := models.Comment{}
-	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&comment).Error
-	if err != nil {
-		errList["No_post"] = "No Post Found"
+		errList["No_comment"] = "No Comment Found"
 		handleError(c, http.StatusNotFound, errList)
 		return
 	}
 
-	// Is the authenticated user, the owner of this comment?
-	if profileID != comment.ProfileID {
+	if profileID != origComment.ProfileID {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
 	// If all the conditions are met, delete the post
-	_, err = comment.DeleteAComment(server.DB)
+	_, err = origComment.DeleteAComment(server.DB)
 	if err != nil {
 		errList["Other_error"] = "Please try again later"
 		handleError(c, http.StatusNotFound, errList)
@@ -258,4 +219,52 @@ func (server *Server) DeleteComment(c *gin.Context) {
 		"status":   http.StatusOK,
 		"response": "Comment deleted",
 	})
+}
+
+func (server *Server) commonCommentCode(c *gin.Context) (uint64, uint32, *models.User, *models.Post) {
+	errList := map[string]string{}
+
+	postID := c.Param("id")
+	pid, err := strconv.ParseUint(postID, 10, 64)
+	if err != nil {
+		errList["Invalid_request"] = "Invalid Request"
+		handleError(c, http.StatusBadRequest, errList)
+		return 0, 0, nil, nil
+	}
+
+	// check if the post exist
+	post := models.Post{}
+	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
+	if err != nil {
+		errList["Unauthorized"] = "Unauthorized"
+		handleError(c, http.StatusUnauthorized, errList)
+		return 0, 0, nil, nil
+	}
+
+	// check if the auth token is valid and get the user id from it
+	userID, err := auth.ExtractTokenID(c.Request)
+	if err != nil {
+		errList["Unauthorized"] = "Unauthorized"
+		handleError(c, http.StatusUnauthorized, errList)
+		return 0, 0, nil, nil
+	}
+
+	// Check if profile is valid and associated with an existing user
+	user, err := FindUserByID(server.DB, uint32(userID))
+	if err != nil {
+		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
+		handleError(c, http.StatusNotFound, errList)
+		return 0, 0, nil, nil
+	}
+
+	profileID := user.ProfileID
+	// Check if profile is valid and associated with an existing user
+	_, err = FindUserProfileByID(server.DB, profileID)
+	if err != nil {
+		errList["Not_Found_profile"] = "Not Found the profile"
+		handleError(c, http.StatusNotFound, errList)
+		return 0, 0, nil, nil
+	}
+
+	return pid, profileID, user, &post
 }

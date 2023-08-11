@@ -36,7 +36,7 @@ func ExecuteCreateProfileTestCase(t *testing.T, samples []testdata.CreateProfile
 
 		// Parse the response body into a map.
 		responseInterface := make(map[string]interface{})
-		err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err = json.Unmarshal(rr.Body.Bytes(), &responseInterface)
 		if err != nil {
 			t.Errorf("Cannot convert to json: %v", err)
 		}
@@ -84,7 +84,7 @@ func ExecuteUpdateProfileTest(t *testing.T, samples []testdata.UpdateProfileTest
 
 		// Parse the response body into a map.
 		var responseInterface map[string]interface{}
-		err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err = json.Unmarshal(rr.Body.Bytes(), &responseInterface)
 		if err != nil {
 			t.Errorf("Cannot convert to JSON: %v", err)
 		}
@@ -114,7 +114,8 @@ func ExecuteDeleteProfileTest(t *testing.T, v testdata.DeleteUserProfileSampleCa
 
 	// Parse the response body and perform assertions.
 	responseInterface := make(map[string]interface{})
-	err := json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+	err := json.Unmarshal(rr.Body.Bytes(), &responseInterface)
+
 	if err != nil {
 		t.Errorf("Cannot convert to json: %v", err)
 	}

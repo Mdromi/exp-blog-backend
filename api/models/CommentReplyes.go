@@ -31,12 +31,12 @@ func (rc *Replyes) Validate(action string) map[string]string {
 	switch strings.ToLower(action) {
 	case "update":
 		if rc.Body == "" {
-			err = errors.New("required comment")
+			err = errors.New("Required Comment")
 			errorMessages["Required_body"] = err.Error()
 		}
 	default:
 		if rc.Body == "" {
-			err = errors.New("required comment")
+			err = errors.New("Required Comment")
 			errorMessages["Required_body"] = err.Error()
 		}
 	}

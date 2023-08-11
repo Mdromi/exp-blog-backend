@@ -100,7 +100,7 @@ func TestGetUserProfileByID(t *testing.T) {
 
 		// Parse the response body and perform assertions based on the test case.
 		responseInterface := make(map[string]interface{})
-		err = json.Unmarshal([]byte(rr.Body.String()), &responseInterface)
+		err = json.Unmarshal(rr.Body.Bytes(), &responseInterface)
 		assert.NoError(t, err)
 
 		assert.Equal(t, rr.Code, v.StatusCode)

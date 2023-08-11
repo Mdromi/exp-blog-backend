@@ -51,7 +51,6 @@ func (server *Server) CreatePost(c *gin.Context) {
 	}
 
 	post.AuthorID = uint(pid) // the authenticated user is the one creating the post
-	// fmt.Printf("Post: %+v\n", post)
 
 	post.Prepare()
 	errorMessages := post.Validate()
@@ -147,6 +146,11 @@ func (server *Server) UpdatePost(c *gin.Context) {
 
 	// find the Author profile
 	profile, err := FindUserProfileByID(server.DB, userID)
+	if err != nil {
+		errList["Not_Found_profile"] = "Not Found the profile"
+		handleError(c, http.StatusNotFound, errList)
+		return
+	}
 	profileID := profile.ID
 
 	//Check if the post exist
@@ -159,7 +163,6 @@ func (server *Server) UpdatePost(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("AuthorID", origPost.AuthorID)
 	if profileID != origPost.AuthorID {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)

@@ -130,6 +130,7 @@ func TestDeleteComment(t *testing.T) {
 	if err != nil {
 		log.Fatalf("cannot login: %v\n", err)
 	}
+	fmt.Println("tokenString", tokenString)
 
 	// Get test samples for updating post and iterate over them.
 	samples := testdata.DeleteCommentsSamples(tokenString, secondCommentID)

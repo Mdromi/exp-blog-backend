@@ -101,12 +101,7 @@ func (server *Server) GetComments(c *gin.Context) {
 
 func (server *Server) UpdateComment(c *gin.Context) {
 
-	pid, profileID, user, post := server.commonCommentCode(c)
-	if pid == 0 || profileID == 0 || user == nil || post == nil {
-		return
-	}
-
-	// GET /comment/123?commentID=102
+	// PUT /comment/123?commentID=102
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
@@ -119,6 +114,12 @@ func (server *Server) UpdateComment(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
+
+	pid, profileID, user, post := server.commonCommentCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
+		return
+	}
+
 	origComment := models.Comment{}
 	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&origComment).Error
 	if err != nil {
@@ -176,11 +177,6 @@ func (server *Server) UpdateComment(c *gin.Context) {
 }
 
 func (server *Server) DeleteComment(c *gin.Context) {
-	pid, profileID, user, post := server.commonCommentCode(c)
-	if pid == 0 || profileID == 0 || user == nil || post == nil {
-		return
-	}
-
 	// DELETE /comment/123?commentID=102
 	commentID := c.Query("commentID")
 	if commentID == "" {
@@ -194,6 +190,12 @@ func (server *Server) DeleteComment(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
+
+	pid, profileID, user, post := server.commonCommentCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
+		return
+	}
+
 	origComment := models.Comment{}
 	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&origComment).Error
 	if err != nil {
@@ -203,6 +205,7 @@ func (server *Server) DeleteComment(c *gin.Context) {
 	}
 
 	if profileID != origComment.ProfileID {
+		fmt.Println("profileID != origComment.ProfileID", profileID, origComment.ProfileID)
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)
 		return
@@ -223,7 +226,6 @@ func (server *Server) DeleteComment(c *gin.Context) {
 
 func (server *Server) commonCommentCode(c *gin.Context) (uint64, uint32, *models.User, *models.Post) {
 	errList := map[string]string{}
-
 	postID := c.Param("id")
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {

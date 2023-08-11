@@ -179,6 +179,7 @@ func DeleteCommentsSamples(tokenString, secondCommentID string) []DeleteComments
 			// When id passed is invalid
 			CommentID:  "unknwon",
 			StatusCode: 400,
+			TokenGiven: tokenString,
 		},
 	}
 }

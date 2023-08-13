@@ -6,7 +6,8 @@ import (
 	"github.com/Mdromi/exp-blog-backend/api/models"
 )
 
-type CreateCommentTestCase struct {
+type CreateCommentReplyesTestCase struct {
+	CommentID    string
 	PostIDString string
 	InputJSON    string
 	StatusCode   int
@@ -16,31 +17,34 @@ type CreateCommentTestCase struct {
 	TokenGiven   string
 }
 
-type GetCommentTestCase struct {
-	PostID         string
-	ProfileLength  int
-	CommentsLength int
-	StatusCode     int
+type GetCommentReplyeTestCase struct {
+	CommentID     string
+	ProfileLength int
+	ReplyesLength int
+	StatusCode    int
 }
 
-type UpdateCommentsTestCase struct {
+type UpdateCommentReplyesTestCase struct {
 	CommentID  string
+	ReplyesID  string
 	UpdateJSON string
 	Body       string
 	TokenGiven string
 	StatusCode int
 }
 
-type DeleteCommentsTestCase struct {
+type DeleteCommentReplyesTestCase struct {
 	CommentID  string
+	ReplyesID  string
 	TokenGiven string
 	StatusCode int
 }
 
-func CreateCommentsSamples(firstUserToken, secondUserToken string, firstPostID uint) []CreateCommentTestCase {
-	return []CreateCommentTestCase{
+func CreateCommentReplyeSamples(firstUserToken, secondUserToken, secondCommentID string, firstPostID uint) []CreateCommentReplyesTestCase {
+	return []CreateCommentReplyesTestCase{
 		{
-			// User 1 can comment on his post
+			// User 1 can comment reply on his post
+			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)), //we need the id as a string
 			InputJSON:    `{"body": "comment from user 1"}`,
 			StatusCode:   201,
@@ -50,7 +54,8 @@ func CreateCommentsSamples(firstUserToken, secondUserToken string, firstPostID u
 			TokenGiven:   firstUserToken,
 		},
 		{
-			// User 2 can also comment on user 1 post
+			// User 2 can also comment replye on user 1 post
+			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)),
 			InputJSON:    `{"body":"comment from user 2"}`,
 			StatusCode:   201,
@@ -61,6 +66,7 @@ func CreateCommentsSamples(firstUserToken, secondUserToken string, firstPostID u
 		},
 		{
 			// When no body is provided:
+			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)),
 			InputJSON:    `{"body":""}`,
 			StatusCode:   422,
@@ -69,47 +75,57 @@ func CreateCommentsSamples(firstUserToken, secondUserToken string, firstPostID u
 		},
 		{
 			// Not authenticated (No token provided)
+			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)),
 			StatusCode:   401,
 			TokenGiven:   "",
 		},
 		{
 			// Wrong Token
+			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)),
 			StatusCode:   401,
 			TokenGiven:   "This is an incorrect token",
 		},
 		{
 			// When invalid post id is given
+			CommentID:    secondCommentID,
 			PostIDString: "unknwon",
+			StatusCode:   400,
+		},
+		{
+			// When invalid comment id is given
+			CommentID:    "unknwon",
+			PostIDString: strconv.Itoa(int(firstPostID)),
 			StatusCode:   400,
 		},
 	}
 }
 
-func GetCommentsSamples(profiles []*models.Profile, comments []models.Comment, postID string) []GetCommentTestCase {
-	return []GetCommentTestCase{
+func GetCommentReplyeSamples(profiles []*models.Profile, replyes []models.Replyes, commentID string) []GetCommentReplyeTestCase {
+	return []GetCommentReplyeTestCase{
 		{
-			PostID:         postID,
-			StatusCode:     200,
-			ProfileLength:  len(profiles),
-			CommentsLength: len(comments),
+			CommentID:     commentID,
+			StatusCode:    200,
+			ProfileLength: len(profiles),
+			ReplyesLength: len(replyes),
 		},
 		{
-			PostID:     "unknwon",
+			CommentID:  "unknwon",
 			StatusCode: 400,
 		},
 		{
-			PostID:     strconv.Itoa(12322), //an id that does not exist
+			CommentID:  strconv.Itoa(12322), //an id that does not exist
 			StatusCode: 404,
 		},
 	}
 }
 
-func UpdateCommentsSamples(tokenString, secondCommentID string) []UpdateCommentsTestCase {
-	return []UpdateCommentsTestCase{
+func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) []UpdateCommentReplyesTestCase {
+	return []UpdateCommentReplyesTestCase{
 		{
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			UpdateJSON: `{"Body":"This is the update body"}`,
 			StatusCode: 200,
 			Body:       "This is the update body",
@@ -118,64 +134,101 @@ func UpdateCommentsSamples(tokenString, secondCommentID string) []UpdateComments
 		{
 			// When the body field is empty
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			UpdateJSON: `{"Body":""}`,
 			StatusCode: 422,
 			TokenGiven: tokenString,
 		},
 		{
-			//an id that does not exist
+			//an id that CommentID does not exist
 			CommentID:  strconv.Itoa(12322),
+			ReplyesID:  replyesID,
+			StatusCode: 404,
+			TokenGiven: tokenString,
+		},
+		{
+			//an id that ReplyesID does not exist
+			CommentID:  secondCommentID,
+			ReplyesID:  strconv.Itoa(12322),
 			StatusCode: 404,
 			TokenGiven: tokenString,
 		},
 		{
 			//When the user is not authenticated
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "",
 		},
 		{
 			//When wrong token is passed
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "this is a wrong token",
 		},
 		{
-			// When id passed is invalid
+			// When id passed is invalid CommentID
 			CommentID:  "unknwon",
+			ReplyesID:  replyesID,
+			StatusCode: 400,
+		},
+		{
+			// When id passed is invalid ReplyesID
+			CommentID:  secondCommentID,
+			ReplyesID:  "unknwon",
 			StatusCode: 400,
 		},
 	}
 }
 
-func DeleteCommentsSamples(tokenString, secondCommentID string) []DeleteCommentsTestCase {
-	return []DeleteCommentsTestCase{
+func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) []DeleteCommentReplyesTestCase {
+	return []DeleteCommentReplyesTestCase{
 		{
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			StatusCode: 200,
 			TokenGiven: tokenString,
 		},
 		{
-			//an id that does not exist
+			//an id that does not exist CommentID
 			CommentID:  strconv.Itoa(12322),
+			ReplyesID:  replyesID,
+			StatusCode: 404,
+			TokenGiven: tokenString,
+		},
+		{
+			//an id that does not exist ReplyesID
+			CommentID:  secondCommentID,
+			ReplyesID:  strconv.Itoa(12322),
 			StatusCode: 404,
 			TokenGiven: tokenString,
 		},
 		{
 			//When the user is not authenticated
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "",
 		},
 		{
 			//When wrong token is passed
 			CommentID:  secondCommentID,
+			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "this is a wrong token",
 		},
 		{
-			// When id passed is invalid
+			// When id passed is invalid CommentID
 			CommentID:  "unknwon",
+			ReplyesID:  replyesID,
+			StatusCode: 400,
+			TokenGiven: tokenString,
+		},
+		{
+			// When id passed is invalid ReplyesID
+			CommentID:  secondCommentID,
+			ReplyesID:  "unknwon",
 			StatusCode: 400,
 			TokenGiven: tokenString,
 		},

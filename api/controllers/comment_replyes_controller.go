@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -239,7 +238,6 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 		return
 	}
 	commentID := c.Query("commentID")
-	fmt.Println("commentID", commentID)
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
@@ -273,8 +271,6 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
-
-	fmt.Println("rcid, cid, profileID", rcid, cid, profileID)
 
 	if profileID != uint32(origCommentReplyes.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"

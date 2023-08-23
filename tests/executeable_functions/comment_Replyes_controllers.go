@@ -162,7 +162,7 @@ func ExecuteDeleteCommentReplye(t *testing.T, samples []testdata.DeleteCommentRe
 	for _, v := range samples {
 
 		r := gin.Default()
-		r.DELETE("/comments/:id", server.DeleteComment)
+		r.DELETE("/comments/:id", server.DeleteCommentReplye)
 		url := fmt.Sprintf("/comments/%s?commentID=%s&replyID=%s", v.PostID, v.CommentID, v.ReplyesID)
 		req, err := http.NewRequest(http.MethodDelete, url, nil)
 		if err != nil {

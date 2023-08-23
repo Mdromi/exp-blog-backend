@@ -214,7 +214,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, postID, replyesID 
 			CommentID:  strconv.Itoa(12322),
 			PostID:     postID,
 			ReplyesID:  replyesID,
-			StatusCode: 404,
+			StatusCode: 400,
 			TokenGiven: tokenString,
 		},
 		{
@@ -222,7 +222,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, postID, replyesID 
 			CommentID:  secondCommentID,
 			PostID:     postID,
 			ReplyesID:  strconv.Itoa(12322),
-			StatusCode: 404,
+			StatusCode: 400,
 			TokenGiven: tokenString,
 		},
 		{

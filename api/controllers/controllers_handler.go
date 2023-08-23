@@ -57,7 +57,7 @@ func (server *Server) CommonCommentAndReplyesCode(c *gin.Context) (uint64, uint3
 	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		fmt.Println("err", err)
+		fmt.Println("err1", err)
 		handleError(c, http.StatusUnauthorized, errList)
 		return 0, 0, nil, nil
 	}
@@ -67,6 +67,7 @@ func (server *Server) CommonCommentAndReplyesCode(c *gin.Context) (uint64, uint3
 	fmt.Println("userID", userID)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
+		fmt.Println("err2", err)
 		handleError(c, http.StatusUnauthorized, errList)
 		return 0, 0, nil, nil
 	}

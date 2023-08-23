@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"fmt"
 	"html"
 	"strings"
 
@@ -86,7 +85,6 @@ func (c *Comment) UpdateAComment(db *gorm.DB) (*Comment, error) {
 		return &Comment{}, err
 	}
 
-	fmt.Println("this is the comment body: ", c.Body)
 	if c.ID != 0 {
 		err = db.Debug().Model(&Profile{}).Where("id = ?", c.ProfileID).Take(&c.Profile).Error
 		if err != nil {

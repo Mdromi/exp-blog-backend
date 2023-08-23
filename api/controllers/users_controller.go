@@ -115,7 +115,6 @@ func SaveProfileImage(s *session.Session, file *multipart.FileHeader) (string, e
 	buffer := make([]byte, size)
 	f, err := file.Open()
 	if err != nil {
-		fmt.Println("This is the error: ")
 		fmt.Println(err)
 	}
 	defer f.Close()

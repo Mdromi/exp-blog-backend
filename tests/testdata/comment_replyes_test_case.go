@@ -19,6 +19,7 @@ type CreateCommentReplyesTestCase struct {
 
 type GetCommentReplyeTestCase struct {
 	CommentID     string
+	PostID        string
 	ProfileLength int
 	ReplyesLength int
 	StatusCode    int
@@ -26,6 +27,7 @@ type GetCommentReplyeTestCase struct {
 
 type UpdateCommentReplyesTestCase struct {
 	CommentID  string
+	PostID     string
 	ReplyesID  string
 	UpdateJSON string
 	Body       string
@@ -35,6 +37,7 @@ type UpdateCommentReplyesTestCase struct {
 
 type DeleteCommentReplyesTestCase struct {
 	CommentID  string
+	PostID     string
 	ReplyesID  string
 	TokenGiven string
 	StatusCode int
@@ -46,22 +49,22 @@ func CreateCommentReplyeSamples(firstUserToken, secondUserToken, secondCommentID
 			// User 1 can comment reply on his post
 			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)), //we need the id as a string
-			InputJSON:    `{"body": "comment from user 1"}`,
+			InputJSON:    `{"body": "comment replyes from user 1"}`,
 			StatusCode:   201,
-			ProfileID:    1,
+			ProfileID:    3,
 			PostID:       firstPostID,
-			Body:         "comment from user 1",
+			Body:         "comment replyes from user 1",
 			TokenGiven:   firstUserToken,
 		},
 		{
 			// User 2 can also comment replye on user 1 post
 			CommentID:    secondCommentID,
 			PostIDString: strconv.Itoa(int(firstPostID)),
-			InputJSON:    `{"body":"comment from user 2"}`,
+			InputJSON:    `{"body":"comment replyes from user 2"}`,
 			StatusCode:   201,
-			ProfileID:    2,
+			ProfileID:    4,
 			PostID:       firstPostID,
-			Body:         "comment from user 2",
+			Body:         "comment replyes from user 2",
 			TokenGiven:   secondUserToken,
 		},
 		{
@@ -91,40 +94,46 @@ func CreateCommentReplyeSamples(firstUserToken, secondUserToken, secondCommentID
 			// When invalid post id is given
 			CommentID:    secondCommentID,
 			PostIDString: "unknwon",
-			StatusCode:   400,
+			StatusCode:   401,
+			TokenGiven:   secondUserToken,
 		},
 		{
 			// When invalid comment id is given
 			CommentID:    "unknwon",
 			PostIDString: strconv.Itoa(int(firstPostID)),
 			StatusCode:   400,
+			TokenGiven:   secondUserToken,
 		},
 	}
 }
 
-func GetCommentReplyeSamples(profiles []*models.Profile, replyes []models.Replyes, commentID string) []GetCommentReplyeTestCase {
+func GetCommentReplyeSamples(profiles []*models.Profile, replyes []models.Replyes, postID, commentID string) []GetCommentReplyeTestCase {
 	return []GetCommentReplyeTestCase{
 		{
 			CommentID:     commentID,
+			PostID:        postID,
 			StatusCode:    200,
 			ProfileLength: len(profiles),
 			ReplyesLength: len(replyes),
 		},
 		{
 			CommentID:  "unknwon",
+			PostID:     postID,
 			StatusCode: 400,
 		},
 		{
 			CommentID:  strconv.Itoa(12322), //an id that does not exist
+			PostID:     postID,
 			StatusCode: 404,
 		},
 	}
 }
 
-func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) []UpdateCommentReplyesTestCase {
+func UpdateCommentReplyeSamples(tokenString, secondCommentID, postID, replyesID string) []UpdateCommentReplyesTestCase {
 	return []UpdateCommentReplyesTestCase{
 		{
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			UpdateJSON: `{"Body":"This is the update body"}`,
 			StatusCode: 200,
@@ -134,6 +143,7 @@ func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			// When the body field is empty
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			UpdateJSON: `{"Body":""}`,
 			StatusCode: 422,
@@ -142,6 +152,7 @@ func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//an id that CommentID does not exist
 			CommentID:  strconv.Itoa(12322),
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 404,
 			TokenGiven: tokenString,
@@ -149,13 +160,15 @@ func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//an id that ReplyesID does not exist
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  strconv.Itoa(12322),
-			StatusCode: 404,
+			StatusCode: 400,
 			TokenGiven: tokenString,
 		},
 		{
 			//When the user is not authenticated
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "",
@@ -163,6 +176,7 @@ func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//When wrong token is passed
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "this is a wrong token",
@@ -170,22 +184,27 @@ func UpdateCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			// When id passed is invalid CommentID
 			CommentID:  "unknwon",
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 400,
+			TokenGiven: tokenString,
 		},
 		{
 			// When id passed is invalid ReplyesID
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  "unknwon",
 			StatusCode: 400,
+			TokenGiven: tokenString,
 		},
 	}
 }
 
-func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) []DeleteCommentReplyesTestCase {
+func DeleteCommentReplyeSamples(tokenString, secondCommentID, postID, replyesID string) []DeleteCommentReplyesTestCase {
 	return []DeleteCommentReplyesTestCase{
 		{
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 200,
 			TokenGiven: tokenString,
@@ -193,6 +212,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//an id that does not exist CommentID
 			CommentID:  strconv.Itoa(12322),
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 404,
 			TokenGiven: tokenString,
@@ -200,6 +220,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//an id that does not exist ReplyesID
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  strconv.Itoa(12322),
 			StatusCode: 404,
 			TokenGiven: tokenString,
@@ -207,6 +228,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//When the user is not authenticated
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "",
@@ -214,6 +236,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			//When wrong token is passed
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 401,
 			TokenGiven: "this is a wrong token",
@@ -221,6 +244,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			// When id passed is invalid CommentID
 			CommentID:  "unknwon",
+			PostID:     postID,
 			ReplyesID:  replyesID,
 			StatusCode: 400,
 			TokenGiven: tokenString,
@@ -228,6 +252,7 @@ func DeleteCommentReplyeSamples(tokenString, secondCommentID, replyesID string) 
 		{
 			// When id passed is invalid ReplyesID
 			CommentID:  secondCommentID,
+			PostID:     postID,
 			ReplyesID:  "unknwon",
 			StatusCode: 400,
 			TokenGiven: tokenString,

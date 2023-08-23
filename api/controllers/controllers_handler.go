@@ -2,8 +2,13 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
 
+	"github.com/Mdromi/exp-blog-backend/api/auth"
 	"github.com/Mdromi/exp-blog-backend/api/models"
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
@@ -35,6 +40,55 @@ func GetSocialLinksFromBody(requestBody map[string]string) *models.SocialLink {
 		}
 	}
 	return nil
+}
+
+func (server *Server) CommonCommentAndReplyesCode(c *gin.Context) (uint64, uint32, *models.User, *models.Post) {
+	errList := map[string]string{}
+	postID := c.Param("id")
+	pid, err := strconv.ParseUint(postID, 10, 64)
+	if err != nil {
+		errList["Invalid_request"] = "Invalid Request"
+		handleError(c, http.StatusBadRequest, errList)
+		return 0, 0, nil, nil
+	}
+
+	// check if the post exist
+	post := models.Post{}
+	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
+	if err != nil {
+		errList["Unauthorized"] = "Unauthorized"
+		fmt.Println("err", err)
+		handleError(c, http.StatusUnauthorized, errList)
+		return 0, 0, nil, nil
+	}
+
+	// check if the auth token is valid and get the user id from it
+	userID, err := auth.ExtractTokenID(c.Request)
+	fmt.Println("userID", userID)
+	if err != nil {
+		errList["Unauthorized"] = "Unauthorized"
+		handleError(c, http.StatusUnauthorized, errList)
+		return 0, 0, nil, nil
+	}
+
+	// Check if profile is valid and associated with an existing user
+	user, err := FindUserByID(server.DB, uint32(userID))
+	if err != nil {
+		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
+		handleError(c, http.StatusNotFound, errList)
+		return 0, 0, nil, nil
+	}
+
+	profileID := user.ProfileID
+	// Check if profile is valid and associated with an existing user
+	_, err = FindUserProfileByID(server.DB, profileID)
+	if err != nil {
+		errList["Not_Found_profile"] = "Not Found the profile"
+		handleError(c, http.StatusNotFound, errList)
+		return 0, 0, nil, nil
+	}
+
+	return pid, profileID, user, &post
 }
 
 // handlare function

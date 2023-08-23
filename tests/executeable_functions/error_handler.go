@@ -1,7 +1,9 @@
 package executeablefunctions
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,10 +36,11 @@ func AssertErrorResponse(t *testing.T, responseMap map[string]interface{}, statu
 			"Unauthorized_user": "Invalid UserID or user does not exist",
 		},
 		http.StatusNotFound: {
-			"Not_Found_profile": "Not Found the profile",
-			"Not_Found_user":    "Invalid UserID or user does not exist",
-			"No_post":           "No Post Found",
-			"No_comment":        "No Comment Found",
+			"Not_Found_profile":  "Not Found the profile",
+			"Not_Found_user":     "Invalid UserID or user does not exist",
+			"No_post":            "No Post Found",
+			"No_comment":         "No Comment Found",
+			"No_comment_replyes": "No Comment Replyes Found",
 		},
 		http.StatusInternalServerError: {
 			"Internal_error": "Internal server error occurred",
@@ -81,4 +84,25 @@ func AssertDeleteProfileErrorResponses(t *testing.T, responseInterface map[strin
 	}
 
 	AssertErrorMessages(t, responseMap, errorMessages)
+}
+
+func ConvertToFloat64(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case string:
+		return strconv.ParseFloat(v, 64)
+	case int:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case uint:
+		return float64(v), nil
+	case uint32:
+		return float64(v), nil
+	case uint64:
+		return float64(v), nil
+	default:
+		return 0, fmt.Errorf("unsupported data type")
+	}
 }

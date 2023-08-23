@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"log"
 	"testing"
 
@@ -56,8 +55,6 @@ func TestSaveUserProfile(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	// fmt.Println("profile.UserID", profile.UserID)
-	// fmt.Println("profile.User.ID", profile.User.ID)
 	assert.Equal(t, profile.UserID, profile.UserID)
 
 	// Refresh database all table
@@ -126,7 +123,6 @@ func TestUpdateUserProfile(t *testing.T) {
 	assert.Equal(t, updatedProfile.UserID, profile.UserID)
 	assert.Equal(t, updatedProfile.UserID, profile.UserID)
 
-	fmt.Println("updatedProfile.Name", updatedProfile.Name)
 	assert.Equal(t, updatedProfile.Name, profile.Name+" - 2")
 	assert.Equal(t, updatedProfile.Title, profile.Title+" - 2")
 	assert.Equal(t, updatedProfile.Bio, profile.Bio+" - 2")

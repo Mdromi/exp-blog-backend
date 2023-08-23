@@ -23,7 +23,7 @@ func TestCommnetPost(t *testing.T) {
 
 	var firstPostID uint
 
-	err := refreshUserProfilePostAndCommentTable()
+	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestCommnetPost(t *testing.T) {
 
 func TestGetComments(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	err := refreshUserProfilePostAndCommentTable()
+	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestUpdateComment(t *testing.T) {
 
 	var secondUserEmail, password string
 
-	err := refreshUserProfilePostAndCommentTable()
+	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestDeleteComment(t *testing.T) {
 
 	var secondUserEmail, password, secondCommentID string
 
-	err := refreshUserProfilePostAndCommentTable()
+	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -130,7 +130,6 @@ func TestDeleteComment(t *testing.T) {
 	if err != nil {
 		log.Fatalf("cannot login: %v\n", err)
 	}
-	fmt.Println("tokenString", tokenString)
 
 	// Get test samples for updating post and iterate over them.
 	samples := testdata.DeleteCommentsSamples(tokenString, secondCommentID)
@@ -142,7 +141,7 @@ func getUserTokensAndPostIDForComments() (string, string, uint) {
 	var firstUserEmail, secondUserEmail string
 	var firstPostID uint
 
-	err := refreshUserProfileAndPostTable()
+	err := refreshAllTable()
 	if err != nil {
 		log.Fatal(err)
 	}

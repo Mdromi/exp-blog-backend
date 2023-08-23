@@ -3,7 +3,6 @@ package executeablefunctions
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -141,7 +140,6 @@ func ExecuteDeletePost(t *testing.T, samples []testdata.DeletePostTestCase, serv
 		if err != nil {
 			t.Errorf("Cannot convert to json here: %v", err)
 		}
-		fmt.Println("responseInterface", responseInterface, v.ID)
 		assert.Equal(t, rr.Code, v.StatusCode)
 
 		if v.StatusCode == 200 {

@@ -526,6 +526,24 @@ func refreshUserProfilePostAndCommentReplyeTable() error {
 	log.Printf("Successfully refreshed user, post, comment, and replye tables")
 	return nil
 }
+func refreshReplyeTable() error {
+	migrator := server.DB.Migrator()
+
+	// Drop the User, Post, and Comment tables if they exist
+	err := migrator.DropTable(&models.Replyes{})
+	if err != nil {
+		return err
+	}
+
+	// AutoMigrate to create the User, Post, and Comment tables
+	err = server.DB.AutoMigrate(&models.Replyes{})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Successfully refreshed replye tables")
+	return nil
+}
 
 func seedUsersProfilePostsAndCommentReplyes() (models.Post, []*models.Profile, models.Comment, []models.Replyes, error) {
 	post, _, comments, err := seedUsersProfilePostsAndComments()

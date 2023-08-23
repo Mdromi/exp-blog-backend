@@ -2,56 +2,20 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
-	"github.com/Mdromi/exp-blog-backend/api/auth"
 	"github.com/Mdromi/exp-blog-backend/api/models"
 	"github.com/Mdromi/exp-blog-backend/api/utils/formaterror"
 	"github.com/gin-gonic/gin"
 )
 
 func (server *Server) CreateCommentReplye(c *gin.Context) {
-	// clear previous error if any
-	errList = map[string]string{}
-
-	postID := c.Param("id")
-	pid, err := strconv.ParseUint(postID, 10, 64)
-	if err != nil {
-		errList["Invalid_request"] = "Invalid Request"
-		handleError(c, http.StatusBadRequest, errList)
-		return
-	}
-
-	// check the token
-	profileID, err := auth.ExtractTokenID(c.Request)
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
-		return
-	}
-
-	// check if the profile exists;
-	profile := models.Profile{}
-	err = server.DB.Debug().Model(models.Profile{}).Where("id = ?", profileID).Take(&profile).Error
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
-		return
-	}
-
-	// check if the post exist
-	post := models.Post{}
-	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
-		return
-	}
 
 	// Extrect CommentID
-	// GET /posts/123?commentID=123
+	// POST /posts/123?commentID=123
 	commentID := c.Query("commentID")
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
@@ -62,6 +26,11 @@ func (server *Server) CreateCommentReplye(c *gin.Context) {
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
+		return
+	}
+
+	pid, profileID, user, post := server.CommonCommentAndReplyesCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
 		return
 	}
 
@@ -131,10 +100,21 @@ func (server *Server) GetCommentReplyes(c *gin.Context) {
 		return
 	}
 
+	// check if the comment exist
+	origComment := models.Comment{}
+
+	err = server.DB.Debug().Model(models.Comment{}).Where("id = ?", cid).Take(&origComment).Error
+
+	if err != nil {
+		errList["No_comment"] = "No Comment Found"
+		handleError(c, http.StatusNotFound, errList)
+		return
+	}
+
 	replye := models.Replyes{}
 	replyes, err := replye.GetCommentReplyes(server.DB, cid)
 	if err != nil {
-		errList["No_comments"] = "No comments found"
+		errList["No_comment_replyes"] = "No Comment Replyes Found"
 		handleError(c, http.StatusNotFound, errList)
 		return
 	}
@@ -149,11 +129,8 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	// clear previous error if any
 	errList = map[string]string{}
 
-	postID := c.Param("id")
-	_, err := strconv.ParseUint(postID, 10, 64)
-	if err != nil {
-		errList["Invalid_request"] = "Invalid Request"
-		handleError(c, http.StatusBadRequest, errList)
+	pid, profileID, user, post := server.CommonCommentAndReplyesCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
 		return
 	}
 
@@ -171,7 +148,7 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	}
 
 	replyID := c.Query("replyID")
-	if commentID == "" {
+	if replyID == "" {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
 		return
@@ -180,14 +157,6 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
-		return
-	}
-
-	// check if the auth token is valid and get the user id from it
-	profileID, err := auth.ExtractTokenID(c.Request)
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -245,6 +214,8 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 	replye.ID = origCommentReplyes.ID //this is important to tell the model the post id to update, the other update field are set above
 	replye.ProfileID = origCommentReplyes.ProfileID
 	replye.PostID = origCommentReplyes.PostID
+	replye.CommentID = origCommentReplyes.CommentID
+	replye.PostID = origCommentReplyes.PostID
 
 	commentReplyUpdated, err := replye.UpdateACommentReplyes(server.DB)
 	if err != nil {
@@ -260,7 +231,15 @@ func (server *Server) UpdateACommentReplyes(c *gin.Context) {
 }
 
 func (server *Server) DeleteCommentReplye(c *gin.Context) {
+	// clear previous error if any
+	errList = map[string]string{}
+
+	pid, profileID, user, post := server.CommonCommentAndReplyesCode(c)
+	if pid == 0 || profileID == 0 || user == nil || post == nil {
+		return
+	}
 	commentID := c.Query("commentID")
+	fmt.Println("commentID", commentID)
 	if commentID == "" {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
@@ -270,14 +249,6 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
-		return
-	}
-
-	// is this user authenticated?
-	profileID, err := auth.ExtractTokenID(c.Request)
-	if err != nil {
-		errList["Unauthorized"] = "Unauthorized"
-		handleError(c, http.StatusUnauthorized, errList)
 		return
 	}
 
@@ -302,6 +273,8 @@ func (server *Server) DeleteCommentReplye(c *gin.Context) {
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
+
+	fmt.Println("rcid, cid, profileID", rcid, cid, profileID)
 
 	if profileID != uint32(origCommentReplyes.ProfileID) {
 		errList["Unauthorized"] = "Unauthorized"

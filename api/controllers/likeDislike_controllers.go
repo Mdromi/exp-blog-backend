@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -84,7 +83,6 @@ func (server *Server) GetLikes(c *gin.Context) {
 	// is a valid post id given to us?
 	pid, err := strconv.ParseUint(postID, 10, 64)
 	if err != nil {
-		fmt.Println("this is the error: ", err)
 		errList["Invalid_request"] = "Invalid Request"
 		handleError(c, http.StatusBadRequest, errList)
 		return

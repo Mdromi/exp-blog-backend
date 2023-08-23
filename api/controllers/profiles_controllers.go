@@ -402,7 +402,6 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 
 	// get user id from the token for valid tokens
 	tokenID, err = auth.ExtractTokenID(c.Request)
-	fmt.Println("tokenID", tokenID)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)

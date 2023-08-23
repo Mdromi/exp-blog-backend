@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"log"
 	"testing"
 
@@ -58,8 +57,6 @@ func TestSavePost(t *testing.T) {
 		t.Errorf("this is the error getting the post: %v\n", err)
 		return
 	}
-	fmt.Println("newPost.ID", newPost.ID)
-	fmt.Println("savedPost.ID", savedPost.ReadTime)
 
 	assert.Equal(t, newPost.ID, savedPost.ID)
 	assert.Equal(t, newPost.Title, savedPost.Title)

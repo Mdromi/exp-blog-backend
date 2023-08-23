@@ -69,7 +69,6 @@ func (rc *Replyes) GetCommentReplyes(db *gorm.DB, cid uint64) (*[]Replyes, error
 		return &[]Replyes{}, err
 	}
 
-	fmt.Println("this is the comment body: ", rc.Body)
 	if rc.ID != 0 {
 		err = db.Debug().Model(&Profile{}).Where("id =?", rc.ProfileID).Take(&rc.Profile).Error
 		if err != nil {
@@ -87,7 +86,7 @@ func (rc *Replyes) UpdateACommentReplyes(db *gorm.DB) (*Replyes, error) {
 	var comment Comment
 	if err := db.Debug().First(&comment, rc.CommentID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("comment with ID %d not found", rc.CommentID)
+			return nil, err
 		}
 		return nil, err
 	}
@@ -97,7 +96,6 @@ func (rc *Replyes) UpdateACommentReplyes(db *gorm.DB) (*Replyes, error) {
 		return &Replyes{}, err
 	}
 
-	fmt.Println("this is the comment body: ", rc.Body)
 	if rc.ID != 0 {
 		err = db.Debug().Model(&Profile{}).Where("id =?", rc.ProfileID).Take(&rc.Profile).Error
 		if err != nil {

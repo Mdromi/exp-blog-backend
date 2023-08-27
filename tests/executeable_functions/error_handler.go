@@ -52,6 +52,13 @@ func AssertErrorResponse(t *testing.T, responseMap map[string]interface{}, statu
 			"Profile_created":      "You already created a profile",
 			"Invalid_body":         "Unable to get request",
 			"Required_body":        "Required Comment",
+			"No_email":             "Sorry, we do not recognize this email",
+			"Invalid_token":        "Invalid link. Try requesting again",
+			"Empty_passwords":      "Please ensure both field are entered",
+			"Password_unequal":     "Passwords provided do not match",
+			"Cannot_save":          "Cannot Save, Pls try again later",
+			"Cannot_delete":        "Cannot Delete record, Pls try again later",
+			"Required_email":       "Required Email",
 			// Define error messages for http.StatusUnprocessableEntity here...
 		},
 		// ... add more status code error messages as needed ...

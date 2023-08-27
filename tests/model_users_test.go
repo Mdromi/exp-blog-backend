@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/Mdromi/exp-blog-backend/api/models"
-	_ "github.com/jinzhu/gorm/dialects/mysql"    //mysql driver
-	_ "github.com/jinzhu/gorm/dialects/postgres" //postgres driver
 	"github.com/stretchr/testify/assert"
+	_ "gorm.io/driver/mysql"    //mysql driver
+	_ "gorm.io/driver/postgres" //postgres driver
 )
 
 func TestFindAllUsers(t *testing.T) {

@@ -607,12 +607,12 @@ func refreshUserAndResetPasswordTable() error {
 }
 
 // Seed the reset password table with the token
-func seedResetPassword() (models.ResetPassword, error) {
+func seedResetPassword(eamil string) (models.ResetPassword, error) {
 
 	resetDetails := models.ResetPassword{
 		Token: "awesometoken",
 
-		Email: "pet@example.com",
+		Email: eamil,
 	}
 	err := server.DB.Model(&models.ResetPassword{}).Create(&resetDetails).Error
 	if err != nil {

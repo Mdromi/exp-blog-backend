@@ -51,9 +51,9 @@ func (s *Server) initializeRoutes() {
 		v1.DELETE("/comments/:id", middlewares.TokenAuthMiddleware(), s.DeleteComment)
 
 		// Comment Replyes routes
-		v1.POST("/comments/:id", middlewares.TokenAuthMiddleware(), s.CreateCommentReplye)
-		v1.GET("/comments/:id", s.GetCommentReplyes)
-		v1.PUT("/comments/:id/", middlewares.TokenAuthMiddleware(), s.UpdateACommentReplyes)
-		v1.DELETE("/comments/:id", middlewares.TokenAuthMiddleware(), s.DeleteCommentReplye)
+		v1.POST("/comment/replyes/:id", middlewares.TokenAuthMiddleware(), s.CreateCommentReplye)
+		v1.GET("/comments/replyes/:id", s.GetCommentReplyes)
+		v1.PUT("/comments/replyes/:id/", middlewares.TokenAuthMiddleware(), s.UpdateACommentReplyes)
+		v1.DELETE("/comments/replyes/:id", middlewares.TokenAuthMiddleware(), s.DeleteCommentReplye)
 	}
 }

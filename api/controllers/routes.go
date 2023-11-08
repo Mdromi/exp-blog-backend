@@ -6,6 +6,8 @@ import (
 )
 
 func (s *Server) initializeRoutes() {
+	// Serve static files first
+	s.Router.Static("/static", "./static")
 	v1 := s.Router.Group("/api/v1")
 	{
 		// Login Route
@@ -28,7 +30,7 @@ func (s *Server) initializeRoutes() {
 		v1.GET("/profiles", s.GetUserProfiles)
 		v1.GET("/profiles/:id", s.GetUserProfile)
 		v1.PUT("/profiles/:id", middlewares.TokenAuthMiddleware(), s.UpdateAUserProfile)
-		v1.PUT("/avatar/profiles/:id", middlewares.TokenAuthMiddleware(), s.UpdateUserProfilePic)
+		v1.PUT("/avatar/profiles/:id", middlewares.TokenAuthMiddleware(), s.UpdateUserProfileImage)
 		v1.DELETE("/profiles/:id", middlewares.TokenAuthMiddleware(), s.DeleteUserProfile)
 
 		// Posts routes

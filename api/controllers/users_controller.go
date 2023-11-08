@@ -46,6 +46,9 @@ func (server *Server) CreateUser(c *gin.Context) {
 		return
 	}
 
+	// Set default avatar path
+	user.AvatarPath = "static/uploads/default.png"
+
 	user.Prepare()
 	errorMessages := user.Validate("")
 	if len(errorMessages) > 0 {

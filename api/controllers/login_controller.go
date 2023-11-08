@@ -80,6 +80,7 @@ func (server *Server) SignIn(email, password string) (map[string]interface{}, er
 	userData["email"] = user.Email
 	userData["avatar_path"] = user.AvatarPath
 	userData["username"] = user.Username
+	userData["profileID"] = user.ProfileID
 
 	return userData, nil
 }

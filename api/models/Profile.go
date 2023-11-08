@@ -18,6 +18,8 @@ type Profile struct {
 	Bio         string      `gorm:"type:text;not null" json:"bio" validate:"max=500"`
 	ProfilePic  string      `gorm:"type:varchar(255)" json:"profile_pic"`
 	SocialLinks *SocialLink `json:"social_links"`
+	Username    string      `gorm:"type:varchar(50)" json:"username"`
+	CoverPic    string      `gorm:"type:varchar(255)" json:"cover_pic"`
 }
 
 func (p *Profile) Prepare() {
@@ -158,13 +160,22 @@ func (p *Profile) UpdateAUserProfile(db *gorm.DB, pid uint32) (*Profile, error) 
 	return p, nil
 }
 
-func (p *Profile) UpdateAUserProfilePic(db *gorm.DB, pid uint32) (*Profile, error) {
-	// Update the profile_pic field
-	db = db.Debug().Model(&Profile{}).Where("id = ?", pid).UpdateColumns(
-		map[string]interface{}{
-			"profile_pic": p.ProfilePic,
-		},
-	)
+func (p *Profile) UpdateAUserProfilePic(db *gorm.DB, pid uint32, imageType string) (*Profile, error) {
+	// Create a map to store the column to be updated
+	updateColumns := map[string]interface{}{}
+
+	// Check the image type and update the corresponding column
+	switch imageType {
+	case "profile_pic":
+		updateColumns["profile_pic"] = p.ProfilePic
+	case "cover_pic":
+		updateColumns["cover_pic"] = p.CoverPic
+	default:
+		return nil, errors.New("invalid image type")
+	}
+
+	// Update the specified column
+	db = db.Debug().Model(&Profile{}).Where("id = ?", pid).UpdateColumns(updateColumns)
 
 	if db.Error != nil {
 		return nil, db.Error
@@ -175,6 +186,7 @@ func (p *Profile) UpdateAUserProfilePic(db *gorm.DB, pid uint32) (*Profile, erro
 	if err != nil {
 		return nil, err
 	}
+
 	return p, nil
 }
 

@@ -1,24 +1,19 @@
 package controllers
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/Mdromi/exp-blog-backend/api/auth"
 	"github.com/Mdromi/exp-blog-backend/api/models"
-	"github.com/Mdromi/exp-blog-backend/api/utils/fileformat"
 	"github.com/Mdromi/exp-blog-backend/api/utils/formaterror"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
 
 	"github.com/joho/godotenv"
@@ -55,7 +50,7 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// TASK: Also check the user are login or not?
+	// TASK: Also check if the user is logged in or not?
 
 	if user.ProfileID != 0 {
 		errList["Profile_created"] = "You already created a profile"
@@ -84,6 +79,26 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		errList = errorMessages
 		handleError(c, http.StatusBadRequest, errList)
 		return
+	}
+
+	// Upload profile pic
+	profilePicPath, err := server.uploadFile(c, uint32(profile.UserID), "profile_pic")
+	if err != nil {
+		errList["Cannot_Save_Profile_Pic"] = err.Error()
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
+
+	profile.ProfilePic = profilePicPath
+
+	// Update user avatar_path if it's not the same as ProfilePic
+	if user.AvatarPath != profile.ProfilePic {
+		user.AvatarPath = profile.ProfilePic
+		if err := server.DB.Save(&user).Error; err != nil {
+			errList["Cannot_Update_Avatar_Path"] = "Cannot update user avatar path"
+			handleError(c, http.StatusInternalServerError, errList)
+			return
+		}
 	}
 
 	profileCreated, err := profile.SaveUserProfile(server.DB)
@@ -142,15 +157,26 @@ func (server *Server) GetUserProfile(c *gin.Context) {
 	})
 }
 
-func (server *Server) UpdateUserProfilePic(c *gin.Context) {
+func (server *Server) UpdateUserProfileImage(c *gin.Context) {
 	// clear previous error if any
 	errList = map[string]string{}
 
 	var err error
 	err = godotenv.Load()
 	if err != nil {
-		log.Fatalf("Error gotting env, %v", err)
+		log.Fatalf("Error getting env, %v", err)
 	}
+
+	// Get image type from the request (profile_pic or cover_pic)
+	imageType := c.Param("type")
+
+	// Validate image type
+	if imageType != "profile_pic" && imageType != "cover_pic" {
+		errList["Invalid_request"] = "Invalid Image Type"
+		handleError(c, http.StatusBadRequest, errList)
+		return
+	}
+
 	profileId := c.Param("id")
 	// check if the user id is valid
 	pid, err := strconv.ParseUint(profileId, 10, 32)
@@ -175,91 +201,30 @@ func (server *Server) UpdateUserProfilePic(c *gin.Context) {
 		return
 	}
 
-	file, err := c.FormFile("file")
+	// Upload profile or cover pic based on the image type
+	filePath, err := server.uploadFile(c, uint32(pid), imageType)
 	if err != nil {
-		errList["Invalid_file"] = "Invalid File"
-		handleError(c, http.StatusUnprocessableEntity, errList)
+		errList["Cannot_Save_Image"] = err.Error()
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
 
-	f, err := file.Open()
-	if err != nil {
-		errList["Invalid_file"] = "Invalid File"
-		handleError(c, http.StatusUnprocessableEntity, errList)
-		return
-	}
-	defer f.Close()
-
-	size := file.Size
-	// The image should not be more than 500KB
-	if size > int64(512000) {
-		errList["To_large"] = "Sorry, Please upload an Image of 500KB or less"
-		handleError(c, http.StatusUnprocessableEntity, errList)
-		return
-	}
-
-	buffer := make([]byte, size)
-	f.Read(buffer)
-	fileBytes := bytes.NewReader(buffer)
-	fileType := http.DetectContentType(buffer)
-	// if the image is valid
-	if !strings.HasPrefix(fileType, "image") {
-		errList["Not_Image"] = "Please Upload a valid image"
-		handleError(c, http.StatusUnprocessableEntity, errList)
-		return
-	}
-	filePath := fileformat.UniqueFormat(file.Filename)
-	path := "/profile-photos/" + filePath
-	params := &s3.PutObjectInput{
-		Bucket:        aws.String("chodapi"),
-		Key:           aws.String(path),
-		Body:          fileBytes,
-		ContentLength: aws.Int64(size),
-		ContentType:   aws.String(fileType),
-		ACL:           aws.String("public-read"),
-	}
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(
-			os.Getenv("DO_SPACES_KEY"), os.Getenv("DO_SPACES_SECRET"), os.Getenv("DO_SPACES_TOKEN")),
-		Endpoint: aws.String(os.Getenv("DO_SPACES_ENDPOINT")),
-		Region:   aws.String(os.Getenv("DO_SPACES_REGION")),
-	}
-	newSession := session.New(s3Config)
-	s3Client := s3.New(newSession)
-
-	_, err = s3Client.PutObject(params)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	//IF YOU PREFER TO USE AMAZON S3
-	// s, err := session.NewSession(&aws.Config{Too_large
-	// 	Region: aws.String("us-east-1"),
-	// 	Credentials: credentials.NewStaticCredentials(
-	// 		os.Getenv("AWS_KEY"),
-	// 		os.Getenv("AWS_SECRET"),
-	// 		os.Getenv("AWS_TOKEN"),
-	// 		),
-	// })
-	// if err != nil {
-	// 	fmt.Printf("Could not upload file first error: %s\n", err)
-	// }
-	// fileName, err := SaveProfileImage(s, file)
-	// if err != nil {
-	// 	fmt.Printf("Could not upload file %s\n", err)
-	// } else {
-	// 	fmt.Printf("Image uploaded: %s\n", fileName)
-	// }
-
-	// save The iamge path to the database
+	// Save the image path to the database
 	profile := models.Profile{}
-	profile.ProfilePic = filePath
+	if imageType == "profile_pic" {
+		profile.ProfilePic = filePath
+	} else if imageType == "cover_pic" {
+		profile.CoverPic = filePath
+	} else {
+		errList["Invalid_request"] = "Invalid Image Type"
+		handleError(c, http.StatusBadRequest, errList)
+		return
+	}
 	profile.Prepare()
-	updatedProfile, err := profile.UpdateAUserProfilePic(server.DB, uint32(pid))
+	updatedProfile, err := profile.UpdateAUserProfilePic(server.DB, uint32(pid), imageType)
 
 	if err != nil {
-		errList["Cannot_Save"] = "Cannot Save Image, Pls try again later"
+		errList["Cannot_Save"] = "Cannot Save Image, Please try again later"
 		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
@@ -272,10 +237,10 @@ func (server *Server) UpdateUserProfilePic(c *gin.Context) {
 // TASK: NEED TO MODIFIED
 func (server *Server) UpdateAUserProfile(c *gin.Context) {
 	// clear previous error if any
-	errList = map[string]string{}
+	errList := map[string]string{}
 
 	profileID := c.Param("id")
-	// check the user id is  valid
+	// check the user id is valid
 	pid, err := strconv.ParseUint(profileID, 10, 32)
 	if err != nil {
 		errList["Invalid_request"] = "Invalid Request"
@@ -307,7 +272,7 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	// TASK: Also check the user are login or not?
+	// TASK: Also check if the user is logged in or not?
 
 	if user.ProfileID != uint32(pid) {
 		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
@@ -315,7 +280,7 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		return
 	}
 
-	// if the id is not the authentiacation user id
+	// if the id is not the authentication user id
 	if tokenID != 0 && tokenID != uint32(pid) {
 		errList["Unauthorized"] = "Unauthorized"
 		handleError(c, http.StatusUnauthorized, errList)
@@ -357,13 +322,27 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
-	// Validate the profile fields
-	errorMessages = ValidateProfileFields(&newProfile)
-	if len(errorMessages) > 0 {
-		errList = errorMessages
-		handleError(c, http.StatusUnprocessableEntity, errList)
+
+	// Upload profile pic
+	profilePicPath, err := server.uploadFile(c, uint32(pid), "profile_pic")
+	if err != nil {
+		errList["Cannot_Save_Profile_Pic"] = err.Error()
+		handleError(c, http.StatusInternalServerError, errList)
 		return
 	}
+
+	// Update user avatar_path if it's not the same as ProfilePic
+	if user.AvatarPath != profilePicPath {
+		user.AvatarPath = profilePicPath
+		if err := server.DB.Save(&user).Error; err != nil {
+			errList["Cannot_Update_Avatar_Path"] = "Cannot update user avatar path"
+			handleError(c, http.StatusInternalServerError, errList)
+			return
+		}
+	}
+
+	// Set the profile pic path
+	newProfile.ProfilePic = profilePicPath
 
 	updatedProfile, err := newProfile.UpdateAUserProfile(server.DB, uint32(pid))
 	if err != nil {
@@ -440,6 +419,15 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 		return
 	}
 
+	// Delete user profile uploads directory and its contents
+	uploadsDir := "static/uploads/" + strconv.Itoa(int(pid))
+	err = os.RemoveAll(uploadsDir)
+	if err != nil {
+		errList["Other_error"] = "Error deleting user uploads directory"
+		handleError(c, http.StatusInternalServerError, errList)
+		return
+	}
+
 	deletedProfile := models.Profile{}
 	_, err = deletedProfile.DeleteAUserProfile(server.DB, uint32(pid))
 	if err != nil {
@@ -452,4 +440,47 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 		"status":   http.StatusOK,
 		"response": "User deleted",
 	})
+}
+
+func (server *Server) uploadFile(c *gin.Context, userID uint32, imageType string) (string, error) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return "", err
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	size := file.Size
+	// The image should not be more than 500KB
+	if size > int64(512000) {
+		return "", errors.New("file size exceeds 500KB")
+	}
+
+	buffer := make([]byte, size)
+	f.Read(buffer)
+	fileType := http.DetectContentType(buffer)
+	// if the image is valid
+	if !strings.HasPrefix(fileType, "image") {
+		return "", errors.New("invalid file type")
+	}
+
+	uploadsDir := "static/uploads/" + strconv.Itoa(int(userID))
+	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+		err := os.MkdirAll(uploadsDir, os.ModePerm)
+		if err != nil {
+			return "", errors.New("could not create upload directory")
+		}
+	}
+
+	filePath := filepath.Join(uploadsDir, file.Filename)
+	err = c.SaveUploadedFile(file, filePath)
+	if err != nil {
+		return "", errors.New("could not save file on server")
+	}
+
+	return filePath, nil
 }

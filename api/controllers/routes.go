@@ -26,7 +26,7 @@ func (s *Server) initializeRoutes() {
 		v1.DELETE("/users/:id", middlewares.TokenAuthMiddleware(), s.DeleteUser)
 
 		// Profiles routes
-		v1.POST("/profiles", s.CreateUserProfile)
+		v1.POST("/profiles", middlewares.TokenAuthMiddleware(), s.CreateUserProfile)
 		v1.GET("/profiles", s.GetUserProfiles)
 		v1.GET("/profiles/:id", s.GetUserProfile)
 		v1.PUT("/profiles/:id", middlewares.TokenAuthMiddleware(), s.UpdateAUserProfile)

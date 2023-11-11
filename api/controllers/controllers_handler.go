@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -57,17 +56,14 @@ func (server *Server) CommonCommentAndReplyesCode(c *gin.Context) (uint64, uint3
 	err = server.DB.Debug().Model(models.Post{}).Where("id = ?", pid).Take(&post).Error
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		fmt.Println("err1", err)
 		handleError(c, http.StatusUnauthorized, errList)
 		return 0, 0, nil, nil
 	}
 
 	// check if the auth token is valid and get the user id from it
 	userID, err := auth.ExtractTokenID(c.Request)
-	fmt.Println("userID", userID)
 	if err != nil {
 		errList["Unauthorized"] = "Unauthorized"
-		fmt.Println("err2", err)
 		handleError(c, http.StatusUnauthorized, errList)
 		return 0, 0, nil, nil
 	}
@@ -124,9 +120,10 @@ func ValidateProfileFields(profile *models.Profile) map[string]string {
 
 func mapToSocialLink(input map[string]interface{}) *models.SocialLink {
 	socialLink := &models.SocialLink{
-		Facebook:  getString(input, "facebook"),
-		Twitter:   getString(input, "twitter"),
-		Instagram: getString(input, "instagram"),
+		Website:  getString(input, "website"),
+		Github:   getString(input, "github"),
+		Linkedin: getString(input, "linkedin"),
+		Twitter:  getString(input, "twitter"),
 		// Add more fields as needed
 	}
 

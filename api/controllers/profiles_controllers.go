@@ -3,13 +3,14 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/Mdromi/exp-blog-backend/api/auth"
 	"github.com/Mdromi/exp-blog-backend/api/models"
@@ -22,27 +23,47 @@ import (
 var handleError = formaterror.HandleError
 
 func (server *Server) CreateUserProfile(c *gin.Context) {
-	// Clear previous error if any
-	errList := map[string]string{}
+	errList := make(map[string]string)
 
-	body, err := ioutil.ReadAll(c.Request.Body)
+	// Parse form data
+	err := c.Request.ParseMultipartForm(10 << 20) // 10 MB limit
 	if err != nil {
-		errList["Invalid_body"] = "Unable to get request"
+		errList["Invalid_body"] = "Unable to parse form data"
 		handleError(c, http.StatusUnprocessableEntity, errList)
 		return
 	}
-
-	profile := models.Profile{}
-
-	err = json.Unmarshal(body, &profile)
+	userID, err := strconv.ParseFloat(c.PostForm("userID"), 64)
 	if err != nil {
-		errList["Unmarshal_error"] = "Cannot unmarshal body"
-		handleError(c, http.StatusUnprocessableEntity, errList)
+		errList["Invalid_userID"] = "Invalid or missing userID"
+		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
-	userModel := models.User{}
+	// userID := c.PostForm("userID").(float64)
+	fullName := c.PostForm("fullName")
+	title := c.PostForm("title")
+	about := c.PostForm("about")
+	username := c.PostForm("username")
+
+	// Create the profile struct with required fields
+	profile := models.Profile{
+		Name:     fullName,
+		Title:    title,
+		Bio:      about,
+		UserID:   uint(userID),
+		Username: username,
+	}
+
+	// Access optional fields if present
+	profile.SocialLinks = &models.SocialLink{} // Initialize SocialLinks before using it
+
+	profile.SocialLinks.Website = c.PostForm("website")
+	profile.SocialLinks.Github = c.PostForm("github")
+	profile.SocialLinks.Linkedin = c.PostForm("linkedin")
+	profile.SocialLinks.Twitter = c.PostForm("twitter")
+
 	// Check if UserID is valid and associated with an existing user
+	userModel := models.User{}
 	user, err := userModel.FindUserByID(server.DB, uint32(profile.UserID))
 	if err != nil {
 		errList["Not_Found_user"] = "Invalid UserID or user does not exist"
@@ -50,7 +71,8 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// TASK: Also check if the user is logged in or not?
+	// Check if the user is logged in or not
+	// TODO: Add your logic for checking if the user is logged in
 
 	if user.ProfileID != 0 {
 		errList["Profile_created"] = "You already created a profile"
@@ -58,13 +80,14 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Check if name, title, and bio fields are provided
+	// Check if required fields are provided
 	if profile.Name == "" || profile.Title == "" || profile.Bio == "" {
 		errList["Missing_fields"] = "Name, title, and bio are required"
 		handleError(c, http.StatusBadRequest, errList)
 		return
 	}
 
+	// Prepare and validate the profile
 	profile.Prepare()
 	errorMessages := profile.Validate("")
 	if len(errorMessages) > 0 {
@@ -73,7 +96,6 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Validate the profile fields
 	errorMessages = ValidateProfileFields(&profile)
 	if len(errorMessages) > 0 {
 		errList = errorMessages
@@ -81,37 +103,43 @@ func (server *Server) CreateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Upload profile pic
-	profilePicPath, err := server.uploadFile(c, uint32(profile.UserID), "profile_pic")
-	if err != nil {
-		errList["Cannot_Save_Profile_Pic"] = err.Error()
-		handleError(c, http.StatusInternalServerError, errList)
-		return
-	}
-
-	profile.ProfilePic = profilePicPath
-
-	// Update user avatar_path if it's not the same as ProfilePic
-	if user.AvatarPath != profile.ProfilePic {
-		user.AvatarPath = profile.ProfilePic
-		if err := server.DB.Save(&user).Error; err != nil {
-			errList["Cannot_Update_Avatar_Path"] = "Cannot update user avatar path"
+	// Upload profile pic if profilePic is present in the form data
+	if file, err := c.FormFile("profilePic"); err == nil {
+		// Call the uploadFile function with file data
+		profilePicPath, err := server.uploadFile(c, uint32(profile.UserID), "profilePic", file)
+		fmt.Println("profilePicPath", profilePicPath)
+		if err != nil {
+			errList["Cannot_Save_Profile_Pic"] = err.Error()
 			handleError(c, http.StatusInternalServerError, errList)
 			return
 		}
+		profile.ProfilePic = profilePicPath
 	}
 
-	profileCreated, err := profile.SaveUserProfile(server.DB)
-	if err != nil {
-		formattedError := formaterror.FormatError(err.Error())
-		errList = formattedError
-		handleError(c, http.StatusBadRequest, errList)
-		return
+	// Upload cover pic if coverPic is present in the form data
+	if file, err := c.FormFile("coverPic"); err == nil {
+		// Call the uploadFile function with file data
+		coverPicPath, err := server.uploadFile(c, uint32(profile.UserID), "coverPic", file)
+		if err != nil {
+			errList["Cannot_Save_Cover_Pic"] = err.Error()
+			handleError(c, http.StatusInternalServerError, errList)
+			return
+		}
+		profile.CoverPic = coverPicPath
 	}
+	// fmt.Println("profile", profile)
+	// Save the profile
+	// profileCreated, err := profile.SaveUserProfile(server.DB)
+	// if err != nil {
+	// 	formattedError := formaterror.FormatError(err.Error())
+	// 	errList = formattedError
+	// 	handleError(c, http.StatusBadRequest, errList)
+	// 	return
+	// }
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status":   http.StatusCreated,
-		"response": profileCreated,
+		"response": "",
 	})
 }
 
@@ -202,7 +230,7 @@ func (server *Server) UpdateUserProfileImage(c *gin.Context) {
 	}
 
 	// Upload profile or cover pic based on the image type
-	filePath, err := server.uploadFile(c, uint32(pid), imageType)
+	filePath, err := server.uploadFile(c, uint32(pid), "profilePic", nil)
 	if err != nil {
 		errList["Cannot_Save_Image"] = err.Error()
 		handleError(c, http.StatusInternalServerError, errList)
@@ -324,7 +352,7 @@ func (server *Server) UpdateAUserProfile(c *gin.Context) {
 	}
 
 	// Upload profile pic
-	profilePicPath, err := server.uploadFile(c, uint32(pid), "profile_pic")
+	profilePicPath, err := server.uploadFile(c, uint32(pid), "profilePic", nil)
 	if err != nil {
 		errList["Cannot_Save_Profile_Pic"] = err.Error()
 		handleError(c, http.StatusInternalServerError, errList)
@@ -442,43 +470,24 @@ func (server *Server) DeleteUserProfile(c *gin.Context) {
 	})
 }
 
-func (server *Server) uploadFile(c *gin.Context, userID uint32, imageType string) (string, error) {
-	file, err := c.FormFile("file")
-	if err != nil {
-		return "", err
+func (server *Server) uploadFile(c *gin.Context, userID uint32, fieldname string, file *multipart.FileHeader) (string, error) {
+	// Base directory without the user-specific folder
+	baseDir := filepath.Join("static", "uploads", fieldname)
+
+	// Ensure the base directory exists
+	if err := os.MkdirAll(baseDir, os.ModePerm); err != nil {
+		return "", errors.New("could not create upload directory")
 	}
 
-	f, err := file.Open()
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	size := file.Size
-	// The image should not be more than 500KB
-	if size > int64(512000) {
-		return "", errors.New("file size exceeds 500KB")
+	// Create user-specific directory within the base directory
+	userDir := filepath.Join(baseDir, strconv.Itoa(int(userID)))
+	if err := os.MkdirAll(userDir, os.ModePerm); err != nil {
+		return "", errors.New("could not create user-specific upload directory")
 	}
 
-	buffer := make([]byte, size)
-	f.Read(buffer)
-	fileType := http.DetectContentType(buffer)
-	// if the image is valid
-	if !strings.HasPrefix(fileType, "image") {
-		return "", errors.New("invalid file type")
-	}
-
-	uploadsDir := "static/uploads/" + strconv.Itoa(int(userID))
-	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
-		err := os.MkdirAll(uploadsDir, os.ModePerm)
-		if err != nil {
-			return "", errors.New("could not create upload directory")
-		}
-	}
-
-	filePath := filepath.Join(uploadsDir, file.Filename)
-	err = c.SaveUploadedFile(file, filePath)
-	if err != nil {
+	// Save file to a new file in the user-specific directory
+	filePath := filepath.Join(userDir, file.Filename)
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
 		return "", errors.New("could not save file on server")
 	}
 

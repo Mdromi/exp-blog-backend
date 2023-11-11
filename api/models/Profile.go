@@ -31,12 +31,13 @@ func (p *Profile) Prepare() {
 	// Ensure SocialLink is initialized if nil
 	if p.SocialLinks == nil {
 		p.SocialLinks = &SocialLink{}
+	} else {
+		// Sanitize and trim social links only if SocialLinks is not nil
+		p.SocialLinks.Website = html.EscapeString(strings.TrimSpace(p.SocialLinks.Website))
+		p.SocialLinks.Github = html.EscapeString(strings.TrimSpace(p.SocialLinks.Github))
+		p.SocialLinks.Linkedin = html.EscapeString(strings.TrimSpace(p.SocialLinks.Linkedin))
+		p.SocialLinks.Twitter = html.EscapeString(strings.TrimSpace(p.SocialLinks.Twitter))
 	}
-
-	// Sanitize and trim social links
-	p.SocialLinks.Facebook = html.EscapeString(strings.TrimSpace(p.SocialLinks.Facebook))
-	p.SocialLinks.Twitter = html.EscapeString(strings.TrimSpace(p.SocialLinks.Twitter))
-	p.SocialLinks.Instagram = html.EscapeString(strings.TrimSpace(p.SocialLinks.Instagram))
 }
 
 func (p *Profile) AfterFind() (err error) {

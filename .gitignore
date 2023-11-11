@@ -8,6 +8,8 @@
 *.so
 *.dylib
 .env
+static/uploads
+
 __comment_replyes_controller.go
 # Test binary, built with `go test -c`
 *.test

@@ -10,9 +10,10 @@ import (
 // SocialLink represents social links for a user's profile
 type SocialLink struct {
 	gorm.Model
-	Facebook  string `json:"facebook"`
-	Twitter   string `json:"twitter"`
-	Instagram string `json:"instagram"`
+	Website  string `json:"website"`
+	Github   string `json:"github"`
+	Linkedin string `json:"linkedin"`
+	Twitter  string `json:"twitter"`
 	// Add other social media fields as needed
 }
 
